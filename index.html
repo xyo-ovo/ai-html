@@ -6,11 +6,12 @@
 <meta name="theme-color" content="#f6f6fb" />
 <title>AI HTML 工坊</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%236d5ae6'/%3E%3Ccircle cx='9' cy='9.5' r='1.7' fill='%23fff'/%3E%3Ccircle cx='14.6' cy='8.6' r='1.7' fill='%23fff'/%3E%3Ccircle cx='10' cy='14.6' r='1.7' fill='%23fff'/%3E%3C/svg%3E" />
-<link rel="stylesheet" href="style.v4.css" />
+<script>try{var t=localStorage.getItem('aih.theme');if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="stylesheet" href="style.v5.css" />
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
 <defs>
 <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="9.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="9.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="14.5" r="1.3" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M5.2 18.8l1.4-1.4M17.4 6.6l1.4-1.4"/></symbol>
@@ -37,7 +38,7 @@
   <div class="brand">
     <svg class="ic logo"><use href="#i-palette"/></svg>
     <span>AI HTML 工坊</span>
-    <span class="ver">v4</span>
+    <span class="ver">v5</span>
   </div>
   <div class="actions">
     <button id="btn-theme" class="icon-btn" title="切换主题"><svg class="ic"><use href="#i-moon"/></svg></button>
@@ -60,9 +61,9 @@
   <div class="preview-bar">
     <span id="pv-name" class="pv-name"></span>
     <div class="pv-actions">
-      <button id="pv-copy"><svg class="ic"><use href="#i-copy"/></svg><span>复制</span></button>
-      <button id="pv-download"><svg class="ic"><use href="#i-download"/></svg><span>下载</span></button>
-      <button id="pv-back"><svg class="ic"><use href="#i-x"/></svg><span>返回</span></button>
+      <button id="pv-copy"><svg class="ic"><use href="#i-copy"/></svg><span class="lbl">复制</span></button>
+      <button id="pv-download"><svg class="ic"><use href="#i-download"/></svg><span class="lbl">下载</span></button>
+      <button id="pv-back"><svg class="ic"><use href="#i-x"/></svg><span class="lbl">返回</span></button>
     </div>
   </div>
   <iframe id="pv-frame" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-same-origin"></iframe>
@@ -116,6 +117,16 @@
           <button id="btn-fetch-models" class="ghost">拉取模型</button>
         </div>
       </section>
+      <section class="field">
+        <label>推理模式</label>
+        <select id="pe-reasoning">
+          <option value="default">默认（跟随模型，不额外传参）</option>
+          <option value="off">关闭思考</option>
+          <option value="low">开启 · 低强度</option>
+          <option value="medium">开启 · 中强度</option>
+          <option value="high">开启 · 高强度</option>
+        </select>
+      </section>
       <div class="row between">
         <button id="pe-delete" class="ghost danger" hidden>删除</button>
         <button id="pe-save">保存</button>
@@ -126,6 +137,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v4.js"></script>
+<script src="app.v5.js"></script>
 </body>
 </html>
