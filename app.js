@@ -191,13 +191,22 @@ async function send() {
   $('#btn-send').disabled = true;
 
   let acc = '';
+  let errMsg = '';
   try {
     const url = p.base.replace(/\/+$/, '') + '/chat/completions';
-    const hist = messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+    // 清洗历史：合并连续同角色消息，保证合法交替
+    const hist = [];
+    for (const m of messages.slice(0, -1)) {
+      const last = hist[hist.length - 1];
+      if (last && last.role === m.role) last.content += '\n\n' + m.content;
+      else hist.push({ role: m.role, content: m.content });
+    }
+    // 第一条永远带 system（智谱等要求），没填就用默认
+    const DEFAULT_SYS = '你是前端工程师。用户要网页时，直接输出完整可运行的单文件 HTML，用 html 代码块包裹，不要省略任何部分。';
     const body = {
       model: p.model,
       stream: true,
-      messages: LS.sys ? [{ role: 'system', content: LS.sys }, ...hist] : hist,
+      messages: [{ role: 'system', content: (LS.sys || '').trim() || DEFAULT_SYS }, ...hist],
     };
     const res = await fetch(url, {
       method: 'POST',
@@ -229,15 +238,25 @@ async function send() {
       }
     }
   } catch (e) {
-    acc += (acc ? '\n\n' : '') + '⚠️ 出错了：' + e.message;
+    errMsg = e.message;
   }
 
-  aMsg.content = acc;
   el.classList.remove('typing');
   streaming = false;
   $('#btn-send').disabled = false;
 
-  await finalize(aMsg, el);
+  if (errMsg) {
+    // 失败：不写入历史，只在界面显示错误
+    messages.pop();
+    el.innerHTML = '';
+    const d = document.createElement('div');
+    d.className = 'bubble';
+    d.textContent = (acc ? acc + '\n\n' : '') + '⚠️ 出错了：' + errMsg;
+    el.appendChild(d);
+  } else {
+    aMsg.content = acc;
+    await finalize(aMsg, el);
+  }
   saveMessages();
   scrollDown();
 }
