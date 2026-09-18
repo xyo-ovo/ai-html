@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v71：新增「网页搜索」能力（Tavily，不经过 MCP）
+   v72：联网搜索 —— 系统提示声明 + 设置页状态诊断
    ============================================================ */
 
 /* ============================================================
@@ -64,6 +64,10 @@
     '#websearch-field .ws-row button{flex:1 1 auto;min-width:120px}',
     '#websearch-field .ws-tip{font-size:11.5px;color:var(--fg3);line-height:1.7;margin-top:2px}',
     '#websearch-field .ws-badge{display:inline-block;font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--acc-soft);color:var(--acc);margin-left:6px;vertical-align:middle}',
+    '#websearch-field .ws-status{font-size:12px;line-height:1.7;padding:10px 13px;border-radius:12px;background:var(--bg3);border:1px solid var(--line2);color:var(--fg2)}',
+    '#websearch-field .ws-status b{color:var(--fg)}',
+    '#websearch-field .ws-status .ok{color:var(--ok)}',
+    '#websearch-field .ws-status .warn{color:var(--danger)}',
 
     /* ---- 搜索 ---- */
     '.find-bar{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);z-index:30}',
@@ -1311,7 +1315,6 @@
 
 /* ============================================================
    14. 角色卡详情：顶部分类标签（人设 / 世界书 / 正则）
-   —— 只切显示，不动渲染；底部的删除/复制按钮永远可见
    ============================================================ */
 (function cardTabs() {
   'use strict';
@@ -1463,7 +1466,6 @@
 
 /* ============================================================
    16. 让 AI 知道「代码块会变成文件卡片」
-   —— 不管人设写了什么，系统提示词末尾都会自动带上这段
    ============================================================ */
 (function tellAiAboutFiles() {
   'use strict';
@@ -1504,7 +1506,6 @@
 
 /* ============================================================
    17. 网页搜索（Tavily，不走 MCP）
-   —— 能力开关 + web_search 工具 + 设置页配置 + 测试连接
    ============================================================ */
 (function webSearchFeature() {
   'use strict';
@@ -1512,6 +1513,7 @@
   var K_KEY = 'aih.websearch.key';
   var K_PROXY = 'aih.websearch.proxy';
   var API = 'https://api.tavily.com/search';
+  var MARK = '【联网搜索】';
 
   function say(msg, ms) {
     try { if (typeof toast === 'function') toast(msg, ms || 3600); } catch (e) {}
@@ -1584,7 +1586,7 @@
   }
   window.__webSearch = doWebSearch;
 
-  /* ---------- 拦截 mcpCallTool：builtin 工具走本地实现 ---------- */
+  /* ---------- 拦截 mcpCallTool ---------- */
   if (typeof mcpCallTool === 'function' && !mcpCallTool.__wsPatched) {
     var _origCall = mcpCallTool;
     var _newCall = async function (server, name, args) {
@@ -1615,7 +1617,7 @@
     try { window.sessionPersona = _newSP; } catch (e) {}
   }
 
-  /* ---------- savePersona 补字段（原版会丢掉 allowWebSearch） ---------- */
+  /* ---------- savePersona 补字段 ---------- */
   if (typeof savePersona === 'function' && !savePersona.__wsPatched) {
     var _origSave = savePersona;
     var _newSave = function () {
@@ -1630,6 +1632,7 @@
         }
       } catch (e2) {}
       syncToggle();
+      updateStatus();
     };
     _newSave.__wsPatched = true;
     try { savePersona = _newSave; } catch (e) {}
@@ -1681,6 +1684,37 @@
     _newBTP.__wsPatched = true;
     try { buildToolsPayload = _newBTP; } catch (e) {}
     try { window.buildToolsPayload = _newBTP; } catch (e) {}
+  }
+
+  /* ---------- buildSystemPrompt 声明搜索能力 ---------- */
+  if (typeof buildSystemPrompt === 'function' && !buildSystemPrompt.__wsPatched) {
+    var _origBSP = buildSystemPrompt;
+    var _newBSP = function () {
+      var s = _origBSP();
+      if (typeof s !== 'string') return s;
+      var allow = false;
+      try { allow = !!sessionPersona().allowWebSearch; } catch (e) {}
+      if (!allow) return s;
+      if (s.indexOf(MARK) >= 0) return s;
+      return s + [
+        '',
+        '',
+        MARK,
+        '你有一个 web_search 工具，可以联网搜索最新的网页信息。',
+        '当用户问及新闻、实时数据、你不确定或知识范围之外的事情，或者明确说「搜一下」「查一下」「帮我查」时，直接调用它。',
+        '',
+        '重要：不要回答「我没有联网功能」「我无法访问网络」「我只是语言模型」——你是有这个工具的，直接调用即可。',
+        '',
+        '拿到结果后：',
+        '· 把关键信息整理成通顺的回答，不要把原始结果直接倒出来',
+        '· 在末尾附上你用到的来源网址',
+        '· 如果结果互相矛盾或明显过时，如实告诉用户',
+        '· 如果一次没搜到，可以换个关键词再搜一次',
+      ].join('\n');
+    };
+    _newBSP.__wsPatched = true;
+    try { buildSystemPrompt = _newBSP; } catch (e) {}
+    try { window.buildSystemPrompt = _newBSP; } catch (e) {}
   }
 
   /* ---------- 能力栏开关 ---------- */
@@ -1735,6 +1769,7 @@
     }
     btn.classList.toggle('on', next);
     say(next ? '已开启联网搜索' : '已关闭联网搜索');
+    updateStatus();
   }, true);
 
   injectPermRow();
@@ -1742,10 +1777,37 @@
   setTimeout(injectPermRow, 1200);
 
   /* ---------- 设置页配置块 ---------- */
+  function updateStatus() {
+    try {
+      var el = document.getElementById('ws-status');
+      if (!el) return;
+      var on = false;
+      try { on = !!sessionPersona().allowWebSearch; } catch (e) {}
+      var names = [];
+      try {
+        if (typeof buildToolsPayload === 'function') {
+          var r = buildToolsPayload();
+          (r && r.tools || []).forEach(function (t) {
+            var nm = t && t.function && t.function.name;
+            if (nm) names.push(nm);
+          });
+        }
+      } catch (e2) {}
+      var has = names.indexOf('web_search') >= 0;
+      var out = '当前状态：' + (on ? '<b>已开启</b>' : '未开启（去 AI 人设里打开）');
+      out += ' · 已注册工具 <b>' + names.length + '</b> 个';
+      if (has) out += '，含 <b class="ok">web_search</b> ✅';
+      else if (on) out += '，但 <b class="warn">没有 web_search</b> ⚠️';
+      if (names.length && names.length <= 6) out += '<br>工具：' + names.join('、');
+      el.innerHTML = out;
+    } catch (e) {}
+  }
+  window.__wsStatus = updateStatus;
+
   function buildSearchUI() {
     var body = document.querySelector('#page-settings .page-body');
     if (!body) return false;
-    if (document.getElementById('websearch-field')) return true;
+    if (document.getElementById('websearch-field')) { updateStatus(); return true; }
 
     var sec = document.createElement('section');
     sec.className = 'field';
@@ -1760,10 +1822,10 @@
       '  <button type="button" class="ghost" id="ws-test">测试连接</button>',
       '  <button type="button" class="ghost" id="ws-clear">清空</button>',
       '</div>',
+      '<div class="ws-status" id="ws-status">检查中…</div>',
       '<p class="ws-tip">去 tavily.com 免费注册就能拿到 Key（每月有免费额度）。<br>点「测试连接」会真发一次搜索请求；如果报「请求发不出去」，说明浏览器跨域被拦了，这时才需要在上面填代理前缀。</p>',
     ].join('\n');
 
-    /* 插到「工具（MCP）」那块后面 */
     var toolList = document.getElementById('tool-list');
     var toolField = toolList ? toolList.closest('.field') : null;
     if (toolField && toolField.parentNode) {
@@ -1782,6 +1844,7 @@
     keyEl.addEventListener('change', function () {
       try { localStorage.setItem(K_KEY, keyEl.value.trim()); } catch (e) {}
       say('Key 已保存');
+      updateStatus();
     });
     proxyEl.addEventListener('change', function () {
       try { localStorage.setItem(K_PROXY, proxyEl.value.trim()); } catch (e) {}
@@ -1810,8 +1873,10 @@
       keyEl.value = '';
       proxyEl.value = '';
       say('已清空');
+      updateStatus();
     });
 
+    updateStatus();
     return true;
   }
 
@@ -1820,7 +1885,10 @@
   setTimeout(buildSearchUI, 1600);
   document.addEventListener('click', function (e) {
     var t = e.target;
-    if (t && t.closest && t.closest('#tabbar button[data-page="settings"]')) setTimeout(buildSearchUI, 40);
+    if (t && t.closest && t.closest('#tabbar button[data-page="settings"]')) {
+      setTimeout(buildSearchUI, 40);
+      setTimeout(updateStatus, 120);
+    }
   }, true);
 })();
 
@@ -1832,7 +1900,7 @@
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v71';
+      el.textContent = 'v72';
     } catch (e) {}
   }
   set();
