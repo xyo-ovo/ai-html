@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v69：角色卡详情加顶部分类标签（人设 / 世界书 / 正则）
+   v70：给系统提示词自动追加「代码块 → 文件卡片」说明
    ============================================================ */
 
 /* ============================================================
@@ -1340,7 +1340,6 @@
     var secs = body.querySelectorAll('.cv-sec');
     if (!secs.length) return;
 
-    /* 统计每类有多少 */
     var counts = { profile: 0, book: 0, regex: 0 };
     Array.prototype.forEach.call(secs, function (sec) {
       var k = classify(sec);
@@ -1348,14 +1347,12 @@
       counts[k]++;
     });
 
-    /* 当前 tab 没内容 → 自动跳到第一个有内容的 */
     if (!counts[cur]) {
       for (var i = 0; i < TABS.length; i++) {
         if (counts[TABS[i].key]) { cur = TABS[i].key; break; }
       }
     }
 
-    /* 标签栏（存在就复用） */
     var bar = body.querySelector('.cv-tabs');
     if (!bar) {
       bar = document.createElement('div');
@@ -1397,7 +1394,6 @@
   }
   window.__cardTabs = enhance;
 
-  /* 内容重建时重新分类 */
   (function watch() {
     function bind() {
       var body = document.getElementById('cv-body');
@@ -1458,14 +1454,55 @@
 })();
 
 /* ============================================================
-   16. 版本徽章
+   16. 让 AI 知道「代码块会变成文件卡片」
+   —— 不管人设写了什么，系统提示词末尾都会自动带上这段
+   ============================================================ */
+(function tellAiAboutFiles() {
+  'use strict';
+  if (typeof buildSystemPrompt !== 'function') return;
+
+  var MARK = '【你能输出的文件】';
+  var NOTE = [
+    '',
+    '',
+    MARK,
+    '这个界面会把你的 ``` 代码块自动渲染成一张文件卡片，用户可以点开预览、复制、下载或存入文件库。',
+    '所以你可以直接「创建文件」——方式是输出代码块，不需要说「我无法创建文件」「我不能生成附件」之类的话。',
+    '',
+    '对照表（代码块的语言标记 → 生成的文件）：',
+    '· 不带语言标记，或 ```txt / ```text / ```plain → .txt 纯文本',
+    '· ```md → .md 文档　```json → .json　```csv → .csv　```yaml → .yml　```xml → .xml',
+    '· ```html / ```htm / ```svg → 可全屏预览的网页或图形（带一个「打开」按钮）',
+    '· ```js / ```ts / ```css / ```py / ```sh / ```sql / ```go / ```rs / ```java / ```c 等常见语言都支持',
+    '· 其它语言标记也会变成对应后缀的文件，未知标记则回退为 .txt',
+    '',
+    '几条约定：',
+    '1. 代码块里的内容要完整，不要用「此处省略」「同上」之类占位。',
+    '2. 需要多个文件，就连续输出多个代码块，每个都会各自变成一张卡片。',
+    '3. 想让用户拿到某个文件，直接把内容放进代码块即可，不用额外说明机制。',
+    '4. 只有用户明确要「在对话里直接看」的内容（例如短提示、一句命令），才用行内 `代码` 或普通文字。',
+  ].join('\n');
+
+  var _orig = buildSystemPrompt;
+  var _new = function () {
+    var s = _orig();
+    if (typeof s !== 'string') return s;
+    if (s.indexOf(MARK) >= 0) return s;
+    return s + NOTE;
+  };
+  try { buildSystemPrompt = _new; } catch (e) {}
+  try { window.buildSystemPrompt = _new; } catch (e) {}
+})();
+
+/* ============================================================
+   17. 版本徽章
    ============================================================ */
 (function bumpVer() {
   function set() {
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v69';
+      el.textContent = 'v70';
     } catch (e) {}
   }
   set();
