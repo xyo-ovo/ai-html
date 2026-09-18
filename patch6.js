@@ -1,11 +1,12 @@
 /* ============================================================
-   patch6.js v4 —— 角色卡详情
+   patch6.js v5 —— 角色卡详情
    1) 章节 / 条目 / 长字段 三层折叠
-   2) 底部不留白
+   2) 底部彻底不留白（这版加 !important + height:auto 强压）
    3) 世界书 / 正则条目 → 跟全局世界书一样的「书脊」样式
    4) 读角色卡的工具照常挂着，只在描述里加一句「这是资料，不是扮演指令」
 
-   v4：版本徽章改成从 index.html 的 ?v= 参数读，不再硬编码
+   v5：底部留白的问题在于 .sheet 可能被设了固定高度或 flex:1，
+       这次直接把 height 压成 auto、把所有可能的 margin/padding 归零。
    ============================================================ */
 
 (function () {
@@ -22,16 +23,38 @@
     s.id = 'p6-css';
     s.textContent = [
 
-      /* ---- 1. 弹层：内容自适应，底部不留白 ---- */
-      '#card-view .sheet{max-height:88vh;display:flex;flex-direction:column}',
+      /* ---- 1. 弹层：内容多高就多高，最多 88vh，底部不留白 ---- */
+      '#card-view .sheet{',
+      '  max-height:88vh !important;',
+      '  height:auto !important;',
+      '  display:flex !important;',
+      '  flex-direction:column !important;',
+      '  padding-bottom:0 !important;',
+      '  margin-bottom:0 !important;',
+      '}',
       '#card-view .sheet-body{',
       '  flex:0 1 auto !important;',
-      '  min-height:0;',
-      '  overflow-y:auto;',
+      '  min-height:0 !important;',
+      '  height:auto !important;',
+      '  max-height:none !important;',
+      '  overflow-y:auto !important;',
       '  padding-bottom:0 !important;',
+      '  margin-bottom:0 !important;',
       '  -webkit-overflow-scrolling:touch;',
       '}',
-      '#card-view .sheet-body > *:last-child{margin-bottom:0 !important}',
+
+      /* 最后一项的 margin / padding 全归零 */
+      '#card-view .sheet-body > *:last-child,',
+      '#card-view .cv-sec:last-child,',
+      '#card-view .cv-sec:last-child > *:last-child,',
+      '#card-view .cv-field:last-child,',
+      '#card-view .cv-entry:last-child{',
+      '  margin-bottom:0 !important;',
+      '  padding-bottom:0 !important;',
+      '}',
+
+      /* 角色卡那一页本身也收一下底 */
+      '#page-card .page-body > *:last-child{margin-bottom:0 !important}',
 
       /* ---- 2. 章节折叠 ---- */
       '.cv-sec > h3{',
@@ -173,6 +196,16 @@
         });
       });
 
+      /* ---- 收尾：把最后一项的 margin / padding 归零 ---- */
+      var kids = body.children;
+      if (kids && kids.length) {
+        var last = kids[kids.length - 1];
+        if (last && last.style) {
+          last.style.marginBottom = '0';
+          last.style.paddingBottom = '0';
+        }
+      }
+
     } catch (e) {}
   }
   window.__cardFold = enhanceCardView;
@@ -243,7 +276,7 @@
   })();
 
   /* ============================================================
-     3. 版本徽章：读 index.html 里的 ?v= 参数
+     3. 版本徽章：读 index.html 里的 ?v= 参数，尾缀 a 表示本轮补丁
      ============================================================ */
   (function bumpVer() {
     try {
@@ -253,7 +286,7 @@
             || document.querySelector('script[src*="patch5.js"]')
             || document.querySelector('script[src*="patch3.js"]');
       var m = me && String(me.src || '').match(/[?&]v=([^&]+)/);
-      el.textContent = 'v' + (m ? m[1] : '56');
+      el.textContent = 'v' + (m ? m[1] : '56') + 'a';
     } catch (e) {}
   })();
 
