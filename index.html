@@ -41,8 +41,16 @@
   .find-bar input{flex:1 1 auto;padding:9px 13px;border-radius:12px;font-size:14px;background:var(--bg3);border-color:transparent}
   .find-bar input:focus{background:var(--bg3);border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
   .find-count{font-size:12px;color:var(--fg3);font-variant-numeric:tabular-nums;flex:0 0 auto;min-width:3.2em;text-align:right}
-  .find-bar button{width:32px;height:32px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;color:var(--fg2);font-size:14px;line-height:1;background:none;border:none;cursor:pointer;transition:background-color .15s ease,color .15s ease}
-  .find-bar button:hover{background:var(--bg3);color:var(--fg)}
+
+  /* 只作用于「直接子按钮」（✕）——之前写成 .find-bar button，
+     把 .find-row 也一起选上了，32px 宽把文字挤成了一列 */
+  .find-bar > button{
+    width:32px;height:32px;border-radius:10px;flex:0 0 auto;
+    display:grid;place-items:center;color:var(--fg2);font-size:14px;line-height:1;
+    background:none;border:none;cursor:pointer;
+    transition:background-color .15s ease,color .15s ease;
+  }
+  .find-bar > button:hover{background:var(--bg3);color:var(--fg)}
 
   .find-list{
     position:absolute;left:12px;right:12px;top:calc(100% + 6px);
@@ -52,25 +60,25 @@
     display:flex;flex-direction:column;gap:2px;
     z-index:60;-webkit-overflow-scrolling:touch;
   }
-  .find-row{
+  .find-list .find-row{
     display:flex;align-items:flex-start;gap:9px;
-    width:100%;box-sizing:border-box;
+    width:100%;height:auto;box-sizing:border-box;
     padding:9px 11px;border-radius:11px;
     text-align:left;font-size:12.5px;line-height:1.6;
     background:none;border:none;cursor:pointer;font-family:var(--font-sans);
     transition:background-color .14s ease;
   }
-  .find-row:hover{background:var(--bg3)}
-  .find-row .fr-n{
+  .find-list .find-row:hover{background:var(--bg3)}
+  .find-list .find-row .fr-n{
     flex:0 0 1.8em;text-align:right;
     color:var(--fg3);font-size:11.5px;font-variant-numeric:tabular-nums;padding-top:1px;
   }
-  .find-row .fr-role{
+  .find-list .find-row .fr-role{
     flex:0 0 auto;font-size:10.5px;padding:1px 7px;border-radius:999px;
     background:var(--bg4);color:var(--fg2);line-height:1.5;white-space:nowrap;
   }
-  .find-row .fr-role.u{background:var(--acc-soft);color:var(--acc)}
-  .find-row .fr-txt{
+  .find-list .find-row .fr-role.u{background:var(--acc-soft);color:var(--acc)}
+  .find-list .find-row .fr-txt{
     flex:1 1 auto;min-width:0;
     color:var(--fg2);word-break:break-word;white-space:normal;
     overflow:hidden;display:-webkit-box;
@@ -198,7 +206,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v45</span>
+    <span class="ver">v46</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
