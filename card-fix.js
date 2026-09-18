@@ -1,16 +1,34 @@
 /* ============================================================
-   card-fix.js v5 —— 安卓兜底
-   除了「按钮 → input.click()」，再加一条完全不依赖文件选择器的路：
-   直接粘贴角色卡 JSON 文本 → 解析 → 导入
+   card-fix.js v6 —— 修掉「点了没反应」的真正原因
+
+   问题定位（Claude 帮忙看的）：
+   extra.v4.js 里有一段全局事件委托：
+       document.addEventListener('click', function(e){
+         if (t.closest('#btn-import-card')) {
+           e.preventDefault();      // ← 安卓：这等于取消了本次手势
+           e.stopPropagation();
+           pick.click();            // ← 手势已失效，被浏览器拒绝
+         }
+       }, true);                     // ← 捕获阶段，最先执行
+
+   因为它跑在捕获阶段，我们绑在按钮上的监听器根本轮不到；
+   而它自己又先 preventDefault 再 click()，安卓直接拒绝打开文件框。
+
+   修复：给按钮换一个 id（避开那段旧委托），
+        由本脚本用「不 preventDefault、同步 click」的方式接管。
    ============================================================ */
 
 (function () {
   'use strict';
 
+  /* 故意换 id：躲开 extra.v4.js 里针对 #btn-import-card 的那段委托 */
+  var BTN_ID = 'btn-import-card-v2';
+
   function pickEl() {
     return document.getElementById('pick-card');
   }
 
+  /* 导入入口（input 的内联 onchange 会调它） */
   function doImport(files) {
     if (!files || !files.length) return;
     var fn = window.importCardFile || (typeof importCardFile === 'function' ? importCardFile : null);
@@ -30,16 +48,18 @@
   }
   window.__cardFixImport = doImport;
 
-  /* 绑定：只做一件事 —— 同步 pick.click()，不拦任何事件 */
   function bind() {
-    var btn = document.getElementById('btn-import-card');
+    var btn = document.getElementById(BTN_ID);
     var p = pickEl();
     if (!btn || !p) return false;
     if (btn.dataset.cfBound === '1') return true;
     btn.dataset.cfBound = '1';
 
-    btn.addEventListener('click', function () {
-      try { p.click(); } catch (e) {}
+    btn.addEventListener('click', function (e) {
+      /* 拦住这次点击，别让别的委托再重复触发一次 click()
+         注意：这里绝对不 preventDefault —— 安卓会因为「手势被取消」而拒绝 */
+      e.stopPropagation();
+      try { p.click(); } catch (err) {}
     });
     return true;
   }
@@ -56,7 +76,7 @@
     }
   }, true);
 
-  /* ================= 粘贴导入（绕开文件选择器） ================= */
+  /* ================= 粘贴导入（绕开文件选择器，一定可用） ================= */
   window.__cardFixImportText = function (text) {
     var t = String(text == null ? '' : text).trim();
     if (!t) {
@@ -66,15 +86,12 @@
 
     var json = null;
 
-    /* 1) 直接当 JSON */
     if (t.charAt(0) === '{' || t.charAt(0) === '[') {
       try { json = JSON.parse(t); } catch (e) {}
     }
-    /* 2) 当 base64（从 PNG 里拷出来的那种），UTF-8 解码 */
     if (!json && typeof b64ToUtf8 === 'function') {
       try { json = JSON.parse(b64ToUtf8(t)); } catch (e) {}
     }
-    /* 3) 兜底：浏览器原生 atob */
     if (!json) {
       try { json = JSON.parse(atob(t)); } catch (e) {}
     }
