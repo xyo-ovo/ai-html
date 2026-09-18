@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v73：联网搜索开关改为独立 localStorage 存储（不再被「保存人设」抹掉）
+   v74：导航栏磨砂（顶栏 + 底栏浮动，内容可从底下穿过）
    ============================================================ */
 
 /* ============================================================
@@ -143,6 +143,39 @@
     '#file-list .file-row:hover .fr-btns{opacity:1}',
 
     '#card-list .empty,#tool-list .empty,#lore-list .empty,#provider-list .empty,#file-list .empty{padding:22px 14px !important;border:1px dashed var(--line2);border-radius:16px;font-size:12.5px;line-height:1.8;opacity:.72}',
+
+    /* ============================================================
+       导航栏磨砂（v74）
+       —— 顶栏 / 底栏浮起来，内容可从底下穿过
+       ============================================================ */
+    '#topbar{position:fixed !important;top:0;left:0;right:0;z-index:40;',
+    '  background:color-mix(in srgb,var(--bg) 62%,transparent) !important;',
+    '  -webkit-backdrop-filter:blur(30px) saturate(1.8) !important;',
+    '  backdrop-filter:blur(30px) saturate(1.8) !important;',
+    '  border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent) !important;',
+    '  box-shadow:0 1px 2px color-mix(in srgb,var(--fg) 5%,transparent) !important}',
+
+    '#tabbar{position:fixed !important;left:0;right:0;bottom:0;z-index:40;',
+    '  background:color-mix(in srgb,var(--bg) 62%,transparent) !important;',
+    '  -webkit-backdrop-filter:blur(30px) saturate(1.8) !important;',
+    '  backdrop-filter:blur(30px) saturate(1.8) !important;',
+    '  border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent) !important}',
+
+    '#tabbar button.on::after{box-shadow:0 0 8px color-mix(in srgb,var(--acc) 70%,transparent)}',
+
+    /* 内容留位（用 padding，让内容能滚到导航栏后面） */
+    '#messages{padding-top:calc(26px + var(--nav-top,60px)) !important;',
+    '  padding-bottom:calc(16px + var(--nav-bot,60px)) !important}',
+
+    '.page-head{padding-top:calc(24px + var(--nav-top,60px)) !important}',
+
+    '.page-body{padding-bottom:calc(34px + var(--nav-bot,60px)) !important}',
+
+    /* 聊天页输入框让位给底栏 */
+    '#page-chat #composer{margin-bottom:var(--nav-bot,60px) !important}',
+
+    /* 聊天页的「搜索条」也要让位 */
+    '#page-chat #find-bar{margin-top:var(--nav-top,60px)}',
   ].join('\n');
   (document.head || document.documentElement).appendChild(s);
 })();
@@ -1510,7 +1543,6 @@
 
 /* ============================================================
    17. 网页搜索（Tavily，不走 MCP）
-   —— 开关存独立 localStorage（v73 修：不再被保存人设抹掉）
    ============================================================ */
 (function webSearchFeature() {
   'use strict';
@@ -1534,7 +1566,6 @@
       if (v === '1') return true;
       if (v === '0') return false;
     } catch (e) {}
-    /* 老数据兼容：读一下 persona */
     try {
       var s = (typeof currentSession === 'function') ? currentSession() : null;
       var p = (s && s.persona) || (typeof LS !== 'undefined' && LS.persona) || {};
@@ -1548,7 +1579,6 @@
   function setWebSearchOn(on) {
     on = !!on;
     try { localStorage.setItem(K_ON, on ? '1' : '0'); } catch (e) {}
-    /* 顺便同步到 persona，保持兼容 */
     try {
       if (typeof setPersonaFlag === 'function') setPersonaFlag('allowWebSearch', on);
     } catch (e2) {}
@@ -1647,7 +1677,7 @@
     try { window.sessionPersona = _newSP; } catch (e) {}
   }
 
-  /* ---------- 保存人设后：刷新 UI（值不会丢，因为存 localStorage） ---------- */
+  /* ---------- 保存人设后：刷新 UI ---------- */
   if (typeof savePersona === 'function' && !savePersona.__wsPatched) {
     var _origSave = savePersona;
     var _newSave = function () {
@@ -1940,14 +1970,60 @@
 })();
 
 /* ============================================================
-   18. 版本徽章
+   18. 导航栏高度同步（配合磨砂）
+   —— 顶栏 / 底栏浮起来后，用 JS 把实际高度写进 CSS 变量
+   ============================================================ */
+(function navFrost() {
+  'use strict';
+
+  function sync() {
+    try {
+      var root = document.documentElement;
+      var tb = document.getElementById('topbar');
+      var bb = document.getElementById('tabbar');
+      if (tb) {
+        var th = Math.round(tb.getBoundingClientRect().height);
+        if (th > 0) root.style.setProperty('--nav-top', th + 'px');
+      }
+      if (bb) {
+        var bh = Math.round(bb.getBoundingClientRect().height);
+        if (bh > 0) root.style.setProperty('--nav-bot', bh + 'px');
+      }
+    } catch (e) {}
+  }
+
+  sync();
+  setTimeout(sync, 60);
+  setTimeout(sync, 300);
+  setTimeout(sync, 1000);
+  setTimeout(sync, 2200);
+
+  window.addEventListener('resize', sync);
+  window.addEventListener('orientationchange', function () { setTimeout(sync, 260); });
+
+  if (typeof MutationObserver !== 'undefined') {
+    try {
+      var mo = new MutationObserver(function () {
+        clearTimeout(mo._t);
+        mo._t = setTimeout(sync, 80);
+      });
+      var tb = document.getElementById('topbar');
+      var bb = document.getElementById('tabbar');
+      if (tb) mo.observe(tb, { childList: true, subtree: true, attributes: true });
+      if (bb) mo.observe(bb, { childList: true, subtree: true, attributes: true });
+    } catch (e) {}
+  }
+})();
+
+/* ============================================================
+   19. 版本徽章
    ============================================================ */
 (function bumpVer() {
   function set() {
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v73';
+      el.textContent = 'v74';
     } catch (e) {}
   }
   set();
