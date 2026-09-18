@@ -1,6 +1,8 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v66：删掉"写死弹层高度"和"折叠"两段
+   v67：删掉角色卡详情相关的全部 JS（cardView 整段）
+   —— 用户要求：v51 之后给角色卡加的那些 JS 全部撤掉
+   —— 角色卡详情现在完全由 index.html 的 CSS + extra.v4.js 的原渲染决定
    ============================================================ */
 
 /* ============================================================
@@ -80,19 +82,18 @@
     '.msg-branch .br-n{font-variant-numeric:tabular-nums;padding:0 2px}',
     '.msg-branch .br-tag{font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:2px}',
 
-    /* ---- 角色卡详情：弹层贴合内容（不折叠、不写死高度） ---- */
-    '#card-view{align-items:center !important;justify-content:center !important}',
-    '#card-view .sheet{align-self:center !important;height:auto !important;max-height:88vh !important;min-height:0 !important;flex:0 0 auto !important;padding-bottom:0 !important;margin-bottom:0 !important;display:flex !important;flex-direction:column !important;overflow:hidden !important}',
-    '#card-view .sheet-body{flex:0 1 auto !important;height:auto !important;min-height:0 !important;max-height:none !important;padding-bottom:0 !important;margin-bottom:0 !important;-webkit-overflow-scrolling:touch}',
-    '#card-view .sheet-body > *:last-child,#card-view .cv-sec:last-child,#card-view .cv-sec:last-child > *:last-child,#card-view .cv-field:last-child,#card-view .cv-entry:last-child{margin-bottom:0 !important;padding-bottom:0 !important}',
-    '#page-card .page-body > *:last-child{margin-bottom:0 !important}',
-
-    /* ---- 条目数徽章 ---- */
-    '.cv-sec > h3 .cv-count{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:5px}',
-
-    /* ---- 世界书 / 正则条目：书脊样式 ---- */
-    '.cv-entry{border-radius:4px 14px 14px 4px !important;padding:12px 14px 12px 16px !important;background:var(--bg2) !important;border:1px solid var(--line2) !important;border-left:3px solid color-mix(in srgb,var(--acc) 55%,transparent) !important;margin-bottom:9px !important;transition:border-color .2s ease,background-color .2s ease !important}',
-    '.cv-entry:hover{border-color:color-mix(in srgb,var(--acc) 35%,var(--line2)) !important;border-left-color:var(--acc) !important;background:color-mix(in srgb,var(--acc) 3.5%,var(--bg2)) !important}',
+    /* ---- 角色卡详情：底部操作区不要撑出空白 ---- */
+    '#card-view .sheet-body > .row.between:last-child{',
+    '  position:static !important;',
+    '  margin:6px 0 0 0 !important;',
+    '  padding:16px 0 0 0 !important;',
+    '  background:none !important;',
+    '  backdrop-filter:none !important;',
+    '  -webkit-backdrop-filter:none !important;',
+    '  border-top:1px solid var(--line) !important;',
+    '  border-radius:0 !important;',
+    '  box-shadow:none !important;',
+    '}',
 
     /* ---- 输入区对齐 ---- */
     '.composer-inner{display:flex;align-items:center !important}',
@@ -1305,72 +1306,9 @@
 })();
 
 /* ============================================================
-   14. 角色卡详情（v66：不折叠、不写死高度）
-   只保留"条目数"徽章；弹层高度完全交给 CSS
+   14. 角色卡详情 —— v67 已整段删除
+   （v51 之后给角色卡详情加的所有 JS：折叠、写死高度、条目数徽章……全部撤掉）
    ============================================================ */
-(function cardView() {
-  'use strict';
-
-  function enhanceCardView() {
-    try {
-      var body = document.getElementById('cv-body');
-      if (!body) return;
-
-      /* 章节标题加个"条目数"小徽章，纯粹是信息，不带任何交互 */
-      var secs = body.querySelectorAll('.cv-sec');
-      Array.prototype.forEach.call(secs, function (sec) {
-        var h3 = sec.querySelector('h3');
-        if (!h3 || h3.dataset.p6 === '1') return;
-        h3.dataset.p6 = '1';
-
-        var nAll = sec.querySelectorAll('.cv-field, .cv-entry').length;
-        if (nAll > 0 && !h3.querySelector('.cv-count')) {
-          var badge = document.createElement('span');
-          badge.className = 'cv-count';
-          badge.textContent = String(nAll);
-          var btns = h3.querySelector('.cv-btns');
-          if (btns) h3.insertBefore(badge, btns); else h3.appendChild(badge);
-        }
-      });
-
-      /* 清掉任何可能残留的折叠 / 截断 class */
-      Array.prototype.forEach.call(body.querySelectorAll('.folded'), function (el) {
-        el.classList.remove('folded');
-      });
-      Array.prototype.forEach.call(body.querySelectorAll('pre.clamp'), function (el) {
-        el.classList.remove('clamp');
-      });
-    } catch (e) {}
-  }
-  window.__cardFold = enhanceCardView;
-
-  (function watch() {
-    function bind() {
-      var body = document.getElementById('cv-body');
-      if (!body || body.dataset.p6Watch === '1') return;
-      body.dataset.p6Watch = '1';
-      if (typeof MutationObserver === 'undefined') return;
-      var tmr = 0;
-      var mo = new MutationObserver(function () {
-        if (tmr) return;
-        tmr = setTimeout(function () { tmr = 0; enhanceCardView(); }, 40);
-      });
-      try { mo.observe(body, { childList: true, subtree: false }); } catch (e) {}
-    }
-    bind();
-    setTimeout(bind, 600);
-    setTimeout(bind, 2000);
-    document.addEventListener('click', function (e) {
-      var t = e.target;
-      if (!t || !t.closest) return;
-      if (t.closest('#card-list')) {
-        setTimeout(enhanceCardView, 60);
-        setTimeout(enhanceCardView, 260);
-      }
-    }, true);
-    enhanceCardView();
-  })();
-})();
 
 /* ============================================================
    15. 角色卡工具描述软化
@@ -1409,7 +1347,7 @@
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v66';
+      el.textContent = 'v67';
     } catch (e) {}
   }
   set();
