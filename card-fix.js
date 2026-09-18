@@ -1,35 +1,21 @@
 /* ============================================================
-   card-fix.js v2 —— 角色卡导入「硬触发」
-   修复两个问题：
-   1) 原先找 #btn-import-card（v37 改成 label 后没 id）→ 提前 return，整段失效
-   2) 原生 label-for 联动会被页面上的 preventDefault 拦掉 → 不再依赖它
-   方案：document 捕获阶段最先拿到点击 → 手动 pick.click()
+   card-fix.js v3 —— 安卓可用版
+   关键修复：绝对不要 preventDefault！
+   安卓浏览器要求 .click() 必须发生在"未被 preventDefault 的用户手势"里，
+   之前 v2 在捕获阶段先 preventDefault 再 click()，安卓直接拒绝打开文件框。
+
+   现在主方案已改为「input 透明铺满按钮区域」（见 index.html），
+   本脚本只做兜底 + 提供导入入口。
    ============================================================ */
 
 (function () {
   'use strict';
 
-  var _lastOpen = 0;
-
   function pickEl() {
     return document.getElementById('pick-card');
   }
 
-  function openPick() {
-    var now = Date.now();
-    if (now - _lastOpen < 400) return;   /* 节流，防双触发 */
-    _lastOpen = now;
-    var p = pickEl();
-    if (!p) {
-      if (window.toast) toast('找不到文件选择器（pick-card）', 3000);
-      return;
-    }
-    try { p.click(); }
-    catch (err) {
-      if (window.toast) toast('无法打开文件选择器：' + ((err && err.message) || err), 3600);
-    }
-  }
-
+  /* 导入入口（内联 onchange 会调它） */
   function doImport(files) {
     if (!files || !files.length) return;
     var fn = window.importCardFile || (typeof importCardFile === 'function' ? importCardFile : null);
@@ -48,36 +34,35 @@
     })();
   }
   window.__cardFixImport = doImport;
-  window.__cardFixOpen = openPick;
 
-  /* ① 捕获阶段：比页面上任何监听器都早，先拿到点击并阻止传播 */
-  document.addEventListener('click', function (e) {
-    var t = e.target;
-    if (!t || !t.closest) return;
-    var hit = t.closest('label[for="pick-card"], #btn-import-card');
-    if (!hit) return;
+  /* 兜底：只在「事件目标不是 input 自己」时才手动 click
+     并且绝对不 preventDefault —— 让浏览器认为这是有效的用户手势 */
+  function bind() {
+    var wrap = document.getElementById('btn-import-card');
+    var p = pickEl();
+    if (!wrap || !p) return false;
+    if (wrap.dataset.cfBound === '1') return true;
+    wrap.dataset.cfBound = '1';
 
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-
-    openPick();
-  }, true);
-
-  /* ② 再给 label 自己挂一层（防止捕获层因某种原因没跑到） */
-  function bindDirect() {
-    var lb = document.querySelector('label[for="pick-card"]');
-    if (lb && lb.dataset.cfBound !== '1') {
-      lb.dataset.cfBound = '1';
-      lb.addEventListener('click', function (e) {
-        e.preventDefault();
-        openPick();
-      });
-    }
+    wrap.addEventListener('click', function (ev) {
+      /* 用户已经直接点到 input 了，浏览器会自己处理，不用管 */
+      if (ev.target === p) return;
+      try { p.click(); } catch (e) {}
+      /* 注意：这里没有 preventDefault */
+    });
+    return true;
   }
 
-  bindDirect();
-  setTimeout(bindDirect, 60);
-  setTimeout(bindDirect, 400);
-  setTimeout(bindDirect, 1500);
+  bind();
+  setTimeout(bind, 80);
+  setTimeout(bind, 400);
+  setTimeout(bind, 1500);
+
+  /* 切到角色卡页时补绑一次 */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest('#tabbar button[data-page="card"]')) {
+      setTimeout(bind, 30);
+    }
+  }, true);
 })();
