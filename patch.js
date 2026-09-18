@@ -1,8 +1,8 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v67：删掉角色卡详情相关的全部 JS（cardView 整段）
-   —— 用户要求：v51 之后给角色卡加的那些 JS 全部撤掉
-   —— 角色卡详情现在完全由 index.html 的 CSS + extra.v4.js 的原渲染决定
+   v68：清掉角色卡详情相关的干扰 CSS
+   —— 把 #card-view 完全交给 index.html 的 CSS（跟编辑人设弹层同组规则）
+   —— 不再单独设 align-items / height / max-height / flex，让它跟人设完全一致
    ============================================================ */
 
 /* ============================================================
@@ -81,19 +81,6 @@
     '.msg-branch button:disabled{opacity:.3;cursor:default}',
     '.msg-branch .br-n{font-variant-numeric:tabular-nums;padding:0 2px}',
     '.msg-branch .br-tag{font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:2px}',
-
-    /* ---- 角色卡详情：底部操作区不要撑出空白 ---- */
-    '#card-view .sheet-body > .row.between:last-child{',
-    '  position:static !important;',
-    '  margin:6px 0 0 0 !important;',
-    '  padding:16px 0 0 0 !important;',
-    '  background:none !important;',
-    '  backdrop-filter:none !important;',
-    '  -webkit-backdrop-filter:none !important;',
-    '  border-top:1px solid var(--line) !important;',
-    '  border-radius:0 !important;',
-    '  box-shadow:none !important;',
-    '}',
 
     /* ---- 输入区对齐 ---- */
     '.composer-inner{display:flex;align-items:center !important}',
@@ -1306,8 +1293,7 @@
 })();
 
 /* ============================================================
-   14. 角色卡详情 —— v67 已整段删除
-   （v51 之后给角色卡详情加的所有 JS：折叠、写死高度、条目数徽章……全部撤掉）
+   14. 角色卡详情（v67 起整段删除，v68 不再有任何 CSS 干预）
    ============================================================ */
 
 /* ============================================================
@@ -1347,7 +1333,7 @@
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v67';
+      el.textContent = 'v68';
     } catch (e) {}
   }
   set();
