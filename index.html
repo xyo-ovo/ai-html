@@ -30,13 +30,54 @@
   .tk-k{color:#E2A87C}
   .tk-p{color:#A79C90}
 
-  .find-bar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);animation:msgIn .22s cubic-bezier(.16,1,.3,1) both}
+  /* ---------- 搜索条 + 结果列表 ---------- */
+  .find-bar{
+    position:relative;
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;
+    padding:9px 14px;border-bottom:1px solid var(--line);
+    background:var(--bg2);z-index:30;
+    animation:msgIn .22s cubic-bezier(.16,1,.3,1) both;
+  }
   .find-bar input{flex:1 1 auto;padding:9px 13px;border-radius:12px;font-size:14px;background:var(--bg3);border-color:transparent}
   .find-bar input:focus{background:var(--bg3);border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
   .find-count{font-size:12px;color:var(--fg3);font-variant-numeric:tabular-nums;flex:0 0 auto;min-width:3.2em;text-align:right}
-  .find-bar button{width:32px;height:32px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;color:var(--fg2);font-size:14px;line-height:1;transition:background-color .15s ease,color .15s ease}
+  .find-bar button{width:32px;height:32px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;color:var(--fg2);font-size:14px;line-height:1;background:none;border:none;cursor:pointer;transition:background-color .15s ease,color .15s ease}
   .find-bar button:hover{background:var(--bg3);color:var(--fg)}
-  .msg.find-hit{background:var(--acc-soft);border-radius:16px;padding:10px 12px}
+
+  .find-list{
+    position:absolute;left:12px;right:12px;top:calc(100% + 6px);
+    max-height:52vh;overflow-y:auto;
+    background:var(--bg2);border:1px solid var(--line2);border-radius:16px;
+    box-shadow:var(--sh-3);padding:6px;
+    display:flex;flex-direction:column;gap:2px;
+    z-index:60;-webkit-overflow-scrolling:touch;
+  }
+  .find-row{
+    display:flex;align-items:flex-start;gap:9px;
+    width:100%;box-sizing:border-box;
+    padding:9px 11px;border-radius:11px;
+    text-align:left;font-size:12.5px;line-height:1.6;
+    background:none;border:none;cursor:pointer;font-family:var(--font-sans);
+    transition:background-color .14s ease;
+  }
+  .find-row:hover{background:var(--bg3)}
+  .find-row .fr-n{
+    flex:0 0 1.8em;text-align:right;
+    color:var(--fg3);font-size:11.5px;font-variant-numeric:tabular-nums;padding-top:1px;
+  }
+  .find-row .fr-role{
+    flex:0 0 auto;font-size:10.5px;padding:1px 7px;border-radius:999px;
+    background:var(--bg4);color:var(--fg2);line-height:1.5;white-space:nowrap;
+  }
+  .find-row .fr-role.u{background:var(--acc-soft);color:var(--acc)}
+  .find-row .fr-txt{
+    flex:1 1 auto;min-width:0;
+    color:var(--fg2);word-break:break-word;white-space:normal;
+    overflow:hidden;display:-webkit-box;
+    -webkit-line-clamp:2;-webkit-box-orient:vertical;
+  }
+  .find-empty{padding:16px;text-align:center;color:var(--fg3);font-size:12.5px}
+
   .msg.find-cur{background:var(--acc-soft);border-radius:16px;padding:10px 12px;box-shadow:inset 0 0 0 2px var(--acc)}
 
   .attach-bar{max-width:680px;margin:0 auto 9px;animation:msgIn .24s cubic-bezier(.16,1,.3,1) both}
@@ -157,7 +198,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v44</span>
+    <span class="ver">v45</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -169,11 +210,10 @@
 
   <section id="page-chat" class="page active">
     <div id="find-bar" class="find-bar hidden">
-      <input id="find-input" placeholder="在对话中搜索…" />
-      <span id="find-count" class="find-count">0/0</span>
-      <button id="find-prev" title="上一个">↑</button>
-      <button id="find-next" title="下一个">↓</button>
+      <input id="find-input" placeholder="输入关键词，下面列出匹配消息…" />
+      <span id="find-count" class="find-count">0 条</span>
       <button id="find-close" title="关闭">✕</button>
+      <div id="find-list" class="find-list hidden"></div>
     </div>
     <div id="chat"><div id="messages"></div></div>
     <footer id="composer">
@@ -462,5 +502,6 @@
 <script src="app.v29.js"></script>
 <script src="extra.v4.js"></script>
 <script src="card-fix.js"></script>
+<script src="patch3.js"></script>
 </body>
 </html>
