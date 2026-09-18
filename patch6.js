@@ -1,13 +1,14 @@
 /* ============================================================
-   patch6.js v7 —— 角色卡详情
+   patch6.js v8 —— 角色卡详情
    1) 章节 / 条目 / 长字段 三层折叠
    2) 弹层高度 = 内容高度（最多 88vh）
    3) 世界书 / 正则条目 → 跟全局世界书一样的「书脊」样式
    4) 读角色卡的工具照常挂着，只在描述里加一句「这是资料，不是扮演指令」
 
-   v7：前几版光靠 CSS 压不住高度（弹层照样铺满），这版改成
-       「先清空所有高度限制 → 量出内容真实高度 → 写死一个精确 px」。
-       行内 + !important 是最高优先级，没有更高的了。
+   v8：只改版本号来源
+       patch6 是被 patch5 动态加载的，URL 是 patch6.js?v=55，
+       于是徽章读到了 55。改成优先读 index.html 直接引用的 patch3.js，
+       那里挂的是 ?v=56 —— 那才是真正的版本号。
    ============================================================ */
 
 (function () {
@@ -177,11 +178,9 @@
       sheet.style.setProperty('margin-bottom', '0', 'important');
 
       if (need <= cap) {
-        /* 内容装得下：body 不要滚，也不要撑 */
         body.style.setProperty('max-height', 'none', 'important');
         body.style.setProperty('overflow-y', 'visible', 'important');
       } else {
-        /* 内容超了：body 自己滚 */
         body.style.setProperty('max-height', Math.max(0, cap - headH) + 'px', 'important');
         body.style.setProperty('overflow-y', 'auto', 'important');
       }
@@ -204,7 +203,6 @@
   }
   window.__cardFit = fitCardSheet;
 
-  /* 连测几帧，防字体/图片/异步内容把高度改了 */
   function fitCardSheetSoon() {
     fitCardSheet();
     requestAnimationFrame(fitCardSheet);
@@ -307,7 +305,6 @@
     setTimeout(bind, 600);
     setTimeout(bind, 2000);
 
-    /* 点角色卡列表项 → 打开弹层，密集重测 */
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -323,12 +320,10 @@
     enhanceCardView();
     fitCardSheetSoon();
 
-    /* 窗口尺寸变了也重测 */
     window.addEventListener('resize', function () {
       setTimeout(fitCardSheet, 80);
     }, { passive: true });
 
-    /* 弹层关掉时清掉写死的样式，下次打开重新量 */
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -388,16 +383,29 @@
 
   /* ============================================================
      4. 版本徽章
+     —— 优先读 index.html 里直接引用的 patch3.js 的 ?v=，
+        那才是真正的版本号；patch6 自己的 ?v= 是 patch5 传下来的旧值
      ============================================================ */
   (function bumpVer() {
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      var me = document.querySelector('script[src*="patch6.js"]')
-            || document.querySelector('script[src*="patch5.js"]')
-            || document.querySelector('script[src*="patch3.js"]');
-      var m = me && String(me.src || '').match(/[?&]v=([^&]+)/);
-      el.textContent = 'v' + (m ? m[1] : '56') + 'c';
+
+      var candidates = [
+        'script[src*="patch3.js"]',
+        'script[src*="patch4.js"]',
+        'script[src*="patch5.js"]',
+        'script[src*="patch6.js"]',
+      ];
+      var ver = '';
+      for (var i = 0; i < candidates.length; i++) {
+        var s = document.querySelector(candidates[i]);
+        if (!s) continue;
+        var m = String(s.src || '').match(/[?&]v=([^&]+)/);
+        if (m && m[1]) { ver = m[1]; break; }
+      }
+
+      el.textContent = 'v' + (ver || '56') + 'c';
     } catch (e) {}
   })();
 
