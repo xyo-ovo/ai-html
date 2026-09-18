@@ -496,6 +496,9 @@ html.dark .code-block{background:#191614;border-color:#2B2622}
 .conv-item .ci-edit .ic,.conv-item .ci-del .ic{width:15px;height:15px}
 @media(hover:none){.conv-item .ci-edit,.conv-item .ci-del{opacity:.55}}
 
+/* ============================================================
+   弹层
+   ============================================================ */
 .overlay{
   position:fixed;inset:0;z-index:50;
   background:rgba(58,52,46,.42);
@@ -503,9 +506,13 @@ html.dark .code-block{background:#191614;border-color:#2B2622}
   -webkit-backdrop-filter:blur(14px) saturate(1.2);
   display:flex;
 }
-#provider-edit,#tool-edit,#persona,#lore-edit{align-items:flex-end;justify-content:center}
+/* ---- v68：角色卡详情弹层跟人设弹层完全同组 ---- */
+#provider-edit,#tool-edit,#persona,#lore-edit,#card-view{
+  align-items:flex-end;
+  justify-content:center;
+}
 @media(min-width:640px){
-  #provider-edit,#tool-edit,#persona,#lore-edit{align-items:center}
+  #provider-edit,#tool-edit,#persona,#lore-edit,#card-view{align-items:center}
 }
 
 .sheet{
@@ -576,18 +583,6 @@ html.dark .code-block{background:#191614;border-color:#2B2622}
 }
 @media(min-width:640px){
   .sheet-body > .row.between:last-child{border-radius:0 0 26px 26px}
-}
-/* ---- v67：角色卡详情里的底部操作区不要撑出空白 ---- */
-#card-view .sheet-body > .row.between:last-child{
-  position:static !important;
-  margin:6px 0 0 0 !important;
-  padding:16px 0 0 0 !important;
-  background:none !important;
-  backdrop-filter:none !important;
-  -webkit-backdrop-filter:none !important;
-  border-top:1px solid var(--line) !important;
-  border-radius:0 !important;
-  box-shadow:none !important;
 }
 
 button.ghost{
@@ -1061,7 +1056,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">机语工坊</span>
-    <span class="ver">v67</span>
+    <span class="ver">v68</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -1362,22 +1357,21 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v29.js?v=66"></script>
-<script src="extra.v4.js?v=66"></script>
-<script src="patch.js?v=67"></script>
+<script src="app.v29.js?v=68"></script>
+<script src="extra.v4.js?v=68"></script>
+<script src="patch.js?v=68"></script>
 <script>
 /* ============================================================
-   v67
-   patch.js 已把角色卡详情相关的 JS 整段删掉；这里只兜底：
-   ① 徽章设成 v67
-   ② 万一有残留的写死高度 / folded / clamp，顺手清掉
+   v68
+   #card-view 已在 CSS 里归入人设那组（align-items:flex-end）
+   这里只兜底：徽章 + 清掉任何残留的行内高度
    ============================================================ */
 (function () {
   'use strict';
 
   function clean() {
     var v = document.querySelector('.ver');
-    if (v && v.textContent !== 'v67') v.textContent = 'v67';
+    if (v && v.textContent !== 'v68') v.textContent = 'v68';
 
     var ov = document.getElementById('card-view');
     if (!ov || ov.classList.contains('hidden')) return;
@@ -1391,13 +1385,6 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     if (b && b.style && b.style.length) {
       ['height', 'max-height', 'min-height', 'flex', 'overflow-y', 'padding-bottom', 'margin-bottom']
         .forEach(function (k) { b.style.removeProperty(k); });
-    }
-
-    if (b) {
-      var folded = b.querySelectorAll('.folded');
-      Array.prototype.forEach.call(folded, function (el) { el.classList.remove('folded'); });
-      var clamped = b.querySelectorAll('pre.clamp');
-      Array.prototype.forEach.call(clamped, function (el) { el.classList.remove('clamp'); });
     }
   }
 
