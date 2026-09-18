@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v70：给系统提示词自动追加「代码块 → 文件卡片」说明
+   v71：新增「网页搜索」能力（Tavily，不经过 MCP）
    ============================================================ */
 
 /* ============================================================
@@ -56,6 +56,14 @@
     '#font-field .font-name{font-size:12.5px;color:var(--fg2);margin:6px 0 10px;word-break:break-all}',
     '#font-field .font-name b{color:var(--acc)}',
     '#font-field .font-btns{display:flex;gap:8px;flex-wrap:wrap}',
+
+    /* ---- 搜索配置块 ---- */
+    '#websearch-field .ws-inputs{display:flex;flex-direction:column;gap:9px}',
+    '#websearch-field .ws-inputs input{font-size:13.5px;padding:12px 14px}',
+    '#websearch-field .ws-row{display:flex;gap:8px;flex-wrap:wrap}',
+    '#websearch-field .ws-row button{flex:1 1 auto;min-width:120px}',
+    '#websearch-field .ws-tip{font-size:11.5px;color:var(--fg3);line-height:1.7;margin-top:2px}',
+    '#websearch-field .ws-badge{display:inline-block;font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--acc-soft);color:var(--acc);margin-left:6px;vertical-align:middle}',
 
     /* ---- 搜索 ---- */
     '.find-bar{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);z-index:30}',
@@ -1495,14 +1503,336 @@
 })();
 
 /* ============================================================
-   17. 版本徽章
+   17. 网页搜索（Tavily，不走 MCP）
+   —— 能力开关 + web_search 工具 + 设置页配置 + 测试连接
+   ============================================================ */
+(function webSearchFeature() {
+  'use strict';
+
+  var K_KEY = 'aih.websearch.key';
+  var K_PROXY = 'aih.websearch.proxy';
+  var API = 'https://api.tavily.com/search';
+
+  function say(msg, ms) {
+    try { if (typeof toast === 'function') toast(msg, ms || 3600); } catch (e) {}
+  }
+  function getKey() { try { return (localStorage.getItem(K_KEY) || '').trim(); } catch (e) { return ''; } }
+  function getProxy() { try { return (localStorage.getItem(K_PROXY) || '').trim(); } catch (e) { return ''; } }
+
+  /* ---------- 真正干活的请求 ---------- */
+  async function searchRaw(args, key, proxy) {
+    var q = String((args && (args.query || args.q || args.keyword)) || '').trim();
+    if (!q) throw new Error('没有提供搜索关键词');
+    var n = Number((args && args.max_results) || 5);
+    if (!isFinite(n) || n < 1) n = 5;
+    if (n > 10) n = 10;
+
+    var url = API;
+    if (proxy) url = proxy.replace(/\/+$/, '') + '/' + API;
+
+    var res;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + key,
+        },
+        body: JSON.stringify({
+          query: q,
+          max_results: n,
+          search_depth: 'basic',
+          include_answer: false,
+          include_raw_content: false,
+          include_images: false,
+        }),
+      });
+    } catch (e) {
+      throw new Error('请求发不出去（多半是浏览器跨域被拦）—— 试试在设置里填一个代理前缀');
+    }
+
+    if (!res.ok) {
+      var t = '';
+      try { t = await res.text(); } catch (e2) {}
+      var hint = res.status === 401 ? '（Key 不对？）' : (res.status === 429 ? '（额度用完了？）' : '');
+      throw new Error('HTTP ' + res.status + hint + ' ' + String(t).slice(0, 140));
+    }
+
+    var j = null;
+    try { j = await res.json(); } catch (e3) { throw new Error('返回的不是 JSON'); }
+    return { query: q, results: (j && j.results) || [], answer: (j && j.answer) || '' };
+  }
+
+  /* ---------- 给 AI 用的包装（返回纯文本） ---------- */
+  async function doWebSearch(args) {
+    var key = getKey();
+    if (!key) return '（还没配置 Tavily API Key，请让用户在「设置 → 网页搜索」里填写）';
+    try {
+      var r = await searchRaw(args, key, getProxy());
+      if (!r.results.length) return '没有找到「' + r.query + '」的相关结果。';
+      var lines = ['搜索「' + r.query + '」找到 ' + r.results.length + ' 条：', ''];
+      r.results.forEach(function (x, i) {
+        var s = '[' + (i + 1) + '] ' + (x.title || '(无标题)');
+        if (x.url) s += '\n' + x.url;
+        if (x.content) s += '\n' + String(x.content).replace(/\s+/g, ' ').slice(0, 500);
+        lines.push(s);
+      });
+      return lines.join('\n\n');
+    } catch (e) {
+      return '（搜索失败：' + ((e && e.message) || e) + '）';
+    }
+  }
+  window.__webSearch = doWebSearch;
+
+  /* ---------- 拦截 mcpCallTool：builtin 工具走本地实现 ---------- */
+  if (typeof mcpCallTool === 'function' && !mcpCallTool.__wsPatched) {
+    var _origCall = mcpCallTool;
+    var _newCall = async function (server, name, args) {
+      if (!server && name === 'web_search') return await doWebSearch(args);
+      return _origCall(server, name, args);
+    };
+    _newCall.__wsPatched = true;
+    try { mcpCallTool = _newCall; } catch (e) {}
+    try { window.mcpCallTool = _newCall; } catch (e) {}
+  }
+
+  /* ---------- sessionPersona 补字段 ---------- */
+  if (typeof sessionPersona === 'function' && !sessionPersona.__wsPatched) {
+    var _origSP = sessionPersona;
+    var _newSP = function () {
+      var p = _origSP();
+      try {
+        var s = (typeof currentSession === 'function') ? currentSession() : null;
+        var raw = (s && s.persona) || (typeof LS !== 'undefined' && LS.persona) || {};
+        p.allowWebSearch = !!raw.allowWebSearch;
+      } catch (e) {
+        try { p.allowWebSearch = false; } catch (e2) {}
+      }
+      return p;
+    };
+    _newSP.__wsPatched = true;
+    try { sessionPersona = _newSP; } catch (e) {}
+    try { window.sessionPersona = _newSP; } catch (e) {}
+  }
+
+  /* ---------- savePersona 补字段（原版会丢掉 allowWebSearch） ---------- */
+  if (typeof savePersona === 'function' && !savePersona.__wsPatched) {
+    var _origSave = savePersona;
+    var _newSave = function () {
+      var flag = false;
+      try { flag = !!sessionPersona().allowWebSearch; } catch (e) {}
+      _origSave();
+      try {
+        var s = (typeof currentSession === 'function') ? currentSession() : null;
+        if (s && s.persona) {
+          s.persona.allowWebSearch = flag;
+          if (typeof LS !== 'undefined') LS.sessions = sessions;
+        }
+      } catch (e2) {}
+      syncToggle();
+    };
+    _newSave.__wsPatched = true;
+    try { savePersona = _newSave; } catch (e) {}
+    try { window.savePersona = _newSave; } catch (e) {}
+  }
+
+  /* ---------- openPersona 同步开关 ---------- */
+  if (typeof openPersona === 'function' && !openPersona.__wsPatched) {
+    var _origOpen = openPersona;
+    var _newOpen = function () {
+      _origOpen();
+      syncToggle();
+    };
+    _newOpen.__wsPatched = true;
+    try { openPersona = _newOpen; } catch (e) {}
+    try { window.openPersona = _newOpen; } catch (e) {}
+  }
+
+  /* ---------- buildToolsPayload 加工具 ---------- */
+  if (typeof buildToolsPayload === 'function' && !buildToolsPayload.__wsPatched) {
+    var _origBTP = buildToolsPayload;
+    var _newBTP = function () {
+      var r = _origBTP();
+      try {
+        if (!r || !Array.isArray(r.tools) || !r.map) return r;
+        var allow = false;
+        try { allow = !!sessionPersona().allowWebSearch; } catch (e) {}
+        if (!allow) return r;
+        if (r.tools.some(function (t) { return t && t.function && t.function.name === 'web_search'; })) return r;
+        r.map['web_search'] = { builtin: 'websearch', toolName: 'web_search' };
+        r.tools.push({
+          type: 'function',
+          function: {
+            name: 'web_search',
+            description: '联网搜索最新信息。当用户问新闻、实时数据、你不确定或超出知识范围的事，或者用户直接说「搜一下」「查一下」时使用。返回若干条带网址的结果摘要。',
+            parameters: {
+              type: 'object',
+              properties: {
+                query: { type: 'string', description: '搜索关键词，尽量具体，例如「2026年诺贝尔物理学奖」' },
+                max_results: { type: 'integer', description: '返回结果条数，1 到 10，默认 5' },
+              },
+              required: ['query'],
+            },
+          },
+        });
+      } catch (e) {}
+      return r;
+    };
+    _newBTP.__wsPatched = true;
+    try { buildToolsPayload = _newBTP; } catch (e) {}
+    try { window.buildToolsPayload = _newBTP; } catch (e) {}
+  }
+
+  /* ---------- 能力栏开关 ---------- */
+  function syncToggle() {
+    try {
+      var btn = document.getElementById('pa-websearch');
+      if (!btn) return;
+      var on = false;
+      try { on = !!sessionPersona().allowWebSearch; } catch (e) {}
+      btn.classList.toggle('on', on);
+    } catch (e) {}
+  }
+
+  function injectPermRow() {
+    var host = document.querySelector('#persona .perm-row');
+    if (!host || !host.parentNode) return false;
+    if (document.getElementById('pa-websearch')) return true;
+
+    var row = document.createElement('div');
+    row.className = 'perm-row';
+    row.innerHTML =
+      '<div class="perm-meta">' +
+        '<div class="perm-name">联网搜索</div>' +
+        '<div class="perm-sub">开启后 AI 可以搜最新的网页信息（需要在设置里填 Tavily Key）</div>' +
+      '</div>' +
+      '<button id="pa-websearch" class="ti-toggle" title="开启 / 关闭"></button>';
+    host.parentNode.appendChild(row);
+    syncToggle();
+    return true;
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var btn = t.closest('#pa-websearch');
+    if (!btn) return;
+    e.stopPropagation();
+    var cur = false;
+    try { cur = !!sessionPersona().allowWebSearch; } catch (err) {}
+    var next = !cur;
+    if (typeof setPersonaFlag === 'function') {
+      setPersonaFlag('allowWebSearch', next);
+    } else {
+      try {
+        var s = currentSession();
+        if (s) {
+          if (!s.persona) s.persona = {};
+          s.persona.allowWebSearch = next;
+          LS.sessions = sessions;
+        }
+      } catch (err2) {}
+    }
+    btn.classList.toggle('on', next);
+    say(next ? '已开启联网搜索' : '已关闭联网搜索');
+  }, true);
+
+  injectPermRow();
+  setTimeout(injectPermRow, 300);
+  setTimeout(injectPermRow, 1200);
+
+  /* ---------- 设置页配置块 ---------- */
+  function buildSearchUI() {
+    var body = document.querySelector('#page-settings .page-body');
+    if (!body) return false;
+    if (document.getElementById('websearch-field')) return true;
+
+    var sec = document.createElement('section');
+    sec.className = 'field';
+    sec.id = 'websearch-field';
+    sec.innerHTML = [
+      '<label>网页搜索 <span class="ws-badge">Tavily</span></label>',
+      '<div class="ws-inputs">',
+      '  <input id="ws-key" type="password" placeholder="Tavily API Key，形如 tvly-…" />',
+      '  <input id="ws-proxy" placeholder="可选：CORS 代理前缀（直连报跨域时再填）" />',
+      '</div>',
+      '<div class="ws-row">',
+      '  <button type="button" class="ghost" id="ws-test">测试连接</button>',
+      '  <button type="button" class="ghost" id="ws-clear">清空</button>',
+      '</div>',
+      '<p class="ws-tip">去 tavily.com 免费注册就能拿到 Key（每月有免费额度）。<br>点「测试连接」会真发一次搜索请求；如果报「请求发不出去」，说明浏览器跨域被拦了，这时才需要在上面填代理前缀。</p>',
+    ].join('\n');
+
+    /* 插到「工具（MCP）」那块后面 */
+    var toolList = document.getElementById('tool-list');
+    var toolField = toolList ? toolList.closest('.field') : null;
+    if (toolField && toolField.parentNode) {
+      toolField.parentNode.insertBefore(sec, toolField.nextSibling);
+    } else {
+      var anchor = body.lastElementChild;
+      if (anchor && anchor.classList && anchor.classList.contains('row')) body.insertBefore(sec, anchor);
+      else body.appendChild(sec);
+    }
+
+    var keyEl = sec.querySelector('#ws-key');
+    var proxyEl = sec.querySelector('#ws-proxy');
+    keyEl.value = getKey();
+    proxyEl.value = getProxy();
+
+    keyEl.addEventListener('change', function () {
+      try { localStorage.setItem(K_KEY, keyEl.value.trim()); } catch (e) {}
+      say('Key 已保存');
+    });
+    proxyEl.addEventListener('change', function () {
+      try { localStorage.setItem(K_PROXY, proxyEl.value.trim()); } catch (e) {}
+      say('代理已保存');
+    });
+
+    sec.querySelector('#ws-test').addEventListener('click', async function () {
+      var k = (keyEl.value || '').trim();
+      var px = (proxyEl.value || '').trim();
+      try { localStorage.setItem(K_KEY, k); } catch (e) {}
+      try { localStorage.setItem(K_PROXY, px); } catch (e2) {}
+      if (!k) { say('先填 Tavily API Key'); return; }
+      say('正在测试…', 6000);
+      try {
+        var r = await searchRaw({ query: 'hello world', max_results: 1 }, k, px);
+        say('连接成功！返回了 ' + r.results.length + ' 条结果', 4200);
+      } catch (e3) {
+        say('失败：' + ((e3 && e3.message) || e3), 7000);
+      }
+    });
+
+    sec.querySelector('#ws-clear').addEventListener('click', function () {
+      if (!confirm('清空 Tavily Key 和代理设置？')) return;
+      try { localStorage.removeItem(K_KEY); } catch (e) {}
+      try { localStorage.removeItem(K_PROXY); } catch (e2) {}
+      keyEl.value = '';
+      proxyEl.value = '';
+      say('已清空');
+    });
+
+    return true;
+  }
+
+  buildSearchUI();
+  setTimeout(buildSearchUI, 500);
+  setTimeout(buildSearchUI, 1600);
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest('#tabbar button[data-page="settings"]')) setTimeout(buildSearchUI, 40);
+  }, true);
+})();
+
+/* ============================================================
+   18. 版本徽章
    ============================================================ */
 (function bumpVer() {
   function set() {
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v70';
+      el.textContent = 'v71';
     } catch (e) {}
   }
   set();
