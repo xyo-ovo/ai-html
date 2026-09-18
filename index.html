@@ -86,7 +86,10 @@
   .card-item .ci-s{font-size:12px;color:var(--fg3);margin-top:3px}
 
   .cv-sec{margin-bottom:20px}
-  .cv-sec h3{font-size:13px;font-weight:600;color:var(--fg2);letter-spacing:.02em;margin-bottom:10px}
+  .cv-sec h3{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--fg2);letter-spacing:.02em;margin-bottom:10px}
+  .cv-btns{margin-left:auto;display:flex;gap:6px}
+  .cv-btns .mini{font-size:11.5px;padding:5px 10px;border-radius:9px;border:1px solid var(--line2);color:var(--fg2);background:var(--bg2);font-weight:500;transition:border-color .15s ease,color .15s ease,background-color .15s ease}
+  .cv-btns .mini:hover{border-color:var(--acc);color:var(--acc);background:var(--acc-soft)}
   .cv-field{margin-bottom:12px}
   .cv-field .k{font-size:11.5px;color:var(--fg3);margin-bottom:4px}
   .cv-field pre{margin:0;padding:11px 13px;border-radius:12px;background:var(--bg3);font-family:var(--font-mono);font-size:12px;line-height:1.65;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;color:var(--fg)}
@@ -147,7 +150,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v32</span>
+    <span class="ver">v33</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -205,7 +208,7 @@
     <div class="page-body">
       <div id="card-list"></div>
       <button id="btn-import-card" class="ghost"><svg class="ic"><use href="#i-upload"/></svg>导入角色卡（PNG / JSON）</button>
-      <p class="hint">导入后可以在这里查看全部数据（人设字段 / 世界书 / 正则），开关世界书条目。开启「参与对话」的卡，内容会注入给 AI，它就能帮你检查格式、照着写新条目。</p>
+      <p class="hint">导入后只存在这张卡里，<b>不会动你的全局世界书</b>。卡里的世界书、正则都能在这里查看和开关；需要时可以把某张卡的世界书复制成 ST 格式，或手动导入全局。</p>
     </div>
     <input type="file" id="pick-card" accept=".png,.json,image/png,application/json" multiple hidden />
   </section>
@@ -215,7 +218,7 @@
     <div class="page-body">
       <div id="lore-list"></div>
       <button id="btn-add-lore" class="ghost"><svg class="ic"><use href="#i-plus"/></svg>添加条目</button>
-      <p class="hint">给 AI 的长期设定。留空关键词 = 每次对话都注入；写了关键词 = 你的话里出现该词时才注入。多个关键词用逗号隔开。</p>
+      <p class="hint">给 AI 的长期设定（全局，对所有对话生效）。留空关键词 = 每次对话都注入；写了关键词 = 你的话里出现该词时才注入。</p>
     </div>
   </section>
 
@@ -433,6 +436,6 @@
 <div id="toast" class="toast hidden"></div>
 
 <script src="app.v29.js"></script>
-<script src="extra.v1.js"></script>
+<script src="extra.v2.js"></script>
 </body>
 </html>
