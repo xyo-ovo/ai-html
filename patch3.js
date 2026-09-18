@@ -1,16 +1,16 @@
 /* ============================================================
-   patch3.js v4
+   patch3.js v5
    1) 搜索重做（结果列表点选）
    2) 修竖排（覆盖 .find-bar button 误伤 .find-row）
    3) 正文字体上传（存 IndexedDB，FontFace 加载，只作用正文）
    4) 分支对话（重新生成时保留旧版本，左右箭头切换）
+   5) 应用改名 → 机语工坊（包装 sessionPersona，不动 app.v29.js）
 
-   —— 分支部分依赖 app.v29.js 里的全局函数：
-      runAssistant / renderMsg / renderMessages / messages / saveMessages
-      它们都是脚本顶层的声明，本文件在其后加载，可以直接覆盖。
+   —— 本文件在 app.v29.js / extra.v4.js / card-fix.js 之后加载，
+      它们顶层的 function 声明都可以安全覆盖。
    ============================================================ */
 
-/* ---------- 0. 注入覆盖样式 + 标版本 ---------- */
+/* ---------- 0. 注入覆盖样式 ---------- */
 (function injectFindFix() {
   try {
     if (document.getElementById('find-fix-css')) return;
@@ -28,7 +28,6 @@
       '#font-field .font-name{font-size:12.5px;color:var(--fg2);margin:6px 0 10px;word-break:break-all}',
       '#font-field .font-name b{color:var(--acc)}',
       '#font-field .font-btns{display:flex;gap:8px;flex-wrap:wrap}',
-      /* 分支切换器 */
       '.msg-branch{display:flex;align-items:center;gap:6px;margin:2px 0 8px 2px;font-size:11.5px;color:var(--fg3);animation:msgIn .2s cubic-bezier(.16,1,.3,1) both}',
       '.msg-branch button{width:23px;height:23px;border-radius:8px;border:1px solid var(--line2);background:var(--bg2);color:var(--fg2);display:grid;place-items:center;cursor:pointer;font-size:14px;line-height:1;padding:0;transition:border-color .15s ease,color .15s ease,transform .12s ease}',
       '.msg-branch button:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}',
@@ -41,14 +40,54 @@
   } catch (e) {}
 })();
 
+/* ---------- 0.2 应用改名 ---------- */
+(function renameApp() {
+  'use strict';
+  var OLD = 'AI HTML 工坊';
+  var NEW = '机语工坊';
+
+  /* 包装 sessionPersona：名字为空或还是旧名时，返回新名 */
+  if (typeof sessionPersona === 'function') {
+    var _origSP = sessionPersona;
+    var _newSP = function () {
+      var p = _origSP();
+      try {
+        if (!p || !p.name || p.name === OLD) {
+          if (p) p.name = NEW;
+        }
+      } catch (e) {}
+      return p;
+    };
+    try { sessionPersona = _newSP; } catch (e) {}
+    try { window.sessionPersona = _newSP; } catch (e) {}
+  }
+
+  /* 把已经渲染出去的旧名字刷掉 */
+  function refresh() {
+    try { if (typeof renderBrand === 'function') renderBrand(); } catch (e) {}
+    try {
+      if (!document.title || document.title === OLD) document.title = NEW;
+    } catch (e) {}
+    var nm = document.getElementById('brand-name');
+    if (nm && nm.textContent.trim() === OLD) nm.textContent = NEW;
+    var ph = document.getElementById('pa-name');
+    if (ph && ph.placeholder === OLD) ph.placeholder = NEW;
+  }
+
+  refresh();
+  setTimeout(refresh, 120);
+  setTimeout(refresh, 800);
+})();
+
+/* ---------- 0.5 标版本 ---------- */
 (function bumpVer() {
   try {
     var v = document.querySelector('.ver');
-    if (v) v.textContent = 'v48';
+    if (v) v.textContent = 'v49';
   } catch (e) {}
 })();
 
-/* ---------- 0.5 正文字体上传 ---------- */
+/* ---------- 1. 正文字体上传 ---------- */
 (function fontFeature() {
   'use strict';
 
@@ -134,11 +173,8 @@
     if (!rec || !rec.data) return Promise.resolve(false);
     var buf = rec.data;
     var ff;
-    try {
-      ff = new FontFace(FAMILY, buf);
-    } catch (e) {
-      return Promise.reject(e);
-    }
+    try { ff = new FontFace(FAMILY, buf); }
+    catch (e) { return Promise.reject(e); }
     return ff.load().then(function (loaded) {
       try {
         document.fonts.forEach(function (f) {
@@ -184,27 +220,20 @@
 
     function setName(n) {
       if (!nameEl) return;
-      if (n) {
-        nameEl.innerHTML = '当前：<b>' + String(n).replace(/[<>&]/g, '') + '</b>';
-      } else {
-        nameEl.textContent = '当前：系统默认';
-      }
+      if (n) nameEl.innerHTML = '当前：<b>' + String(n).replace(/[<>&]/g, '') + '</b>';
+      else nameEl.textContent = '当前：系统默认';
     }
 
     btnPick.addEventListener('click', function (e) {
       e.stopPropagation();
-      try { pick.click(); } catch (err) {
-        say('打不开文件选择器：' + ((err && err.message) || err), 4200);
-      }
+      try { pick.click(); }
+      catch (err) { say('打不开文件选择器：' + ((err && err.message) || err), 4200); }
     });
 
     pick.addEventListener('change', function () {
       var f = pick.files && pick.files[0];
       if (!f) return;
-      if (f.size > 20 * 1024 * 1024) {
-        say('字体文件超过 20MB，先换个小的吧', 4200);
-        return;
-      }
+      if (f.size > 20 * 1024 * 1024) { say('字体文件超过 20MB，先换个小的吧', 4200); return; }
       say('正在加载字体…', 2200);
       var reader = new FileReader();
       reader.onload = function () {
@@ -212,17 +241,10 @@
         var rec = { name: f.name, data: buf, ts: Date.now() };
         idbPut(KEY, rec)
           .then(function () { return applyFont(rec); })
-          .then(function () {
-            setName(f.name);
-            say('字体已应用：' + f.name, 3600);
-          })
-          .catch(function (e2) {
-            say('字体加载失败：' + ((e2 && e2.message) || e2), 4600);
-          });
+          .then(function () { setName(f.name); say('字体已应用：' + f.name, 3600); })
+          .catch(function (e2) { say('字体加载失败：' + ((e2 && e2.message) || e2), 4600); });
       };
-      reader.onerror = function () {
-        say('读文件失败，换一个试试', 3600);
-      };
+      reader.onerror = function () { say('读文件失败，换一个试试', 3600); };
       try { reader.readAsArrayBuffer(f); }
       catch (e3) { say('这个字体格式读不了：' + ((e3 && e3.message) || e3), 4200); }
       try { pick.value = ''; } catch (e4) {}
@@ -231,15 +253,8 @@
     btnReset.addEventListener('click', function (e) {
       e.stopPropagation();
       idbPut(KEY, null)
-        .then(function () {
-          unmountStyle();
-          setName(null);
-          say('已恢复默认字体', 3000);
-        })
-        .catch(function () {
-          unmountStyle();
-          setName(null);
-        });
+        .then(function () { unmountStyle(); setName(null); say('已恢复默认字体', 3000); })
+        .catch(function () { unmountStyle(); setName(null); });
     });
 
     return true;
@@ -251,30 +266,23 @@
       if (!rec || !rec.data) return;
       return applyFont(rec).then(function () {
         var nameEl = document.getElementById('font-name');
-        if (nameEl) {
-          nameEl.innerHTML = '当前：<b>' + String(rec.name || '自定义字体').replace(/[<>&]/g, '') + '</b>';
-        }
+        if (nameEl) nameEl.innerHTML = '当前：<b>' + String(rec.name || '自定义字体').replace(/[<>&]/g, '') + '</b>';
       }).catch(function () {});
     }).catch(function () {});
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
   setTimeout(buildUI, 600);
   setTimeout(buildUI, 1800);
 
   document.addEventListener('click', function (e) {
     var t = e.target;
-    if (t && t.closest && t.closest('#tabbar button[data-page="settings"]')) {
-      setTimeout(buildUI, 40);
-    }
+    if (t && t.closest && t.closest('#tabbar button[data-page="settings"]')) setTimeout(buildUI, 40);
   }, true);
 })();
 
-/* ---------- 1. 搜索 ---------- */
+/* ---------- 2. 搜索 ---------- */
 (function () {
   'use strict';
 
@@ -414,7 +422,7 @@
   }, true);
 })();
 
-/* ---------- 2. 分支对话 ---------- */
+/* ---------- 3. 分支对话 ---------- */
 (function branchFeature() {
   'use strict';
 
@@ -424,12 +432,9 @@
   }
 
   function say(msg, ms) {
-    try {
-      if (typeof toast === 'function') toast(msg, ms || 3200);
-    } catch (e) {}
+    try { if (typeof toast === 'function') toast(msg, ms || 3200); } catch (e) {}
   }
 
-  /* ---- 快照 ---- */
   function snap(m) {
     var o = {
       content: m.content,
@@ -455,7 +460,6 @@
     return m.variants;
   }
 
-  /* ---- 切换 ---- */
   function switchVariant(idx, vi) {
     var m = (typeof messages !== 'undefined' && messages) ? messages[idx] : null;
     if (!m || !m.variants) return;
@@ -475,15 +479,11 @@
     try { if (typeof saveMessages === 'function') saveMessages(); } catch (e) {}
 
     var el = document.querySelector('#messages .msg[data-idx="' + idx + '"]');
-    if (el) {
-      try { el.replaceWith(renderMsg(m, idx)); } catch (e) {}
-    } else if (typeof renderMessages === 'function') {
-      try { renderMessages(); } catch (e) {}
-    }
+    if (el) { try { el.replaceWith(renderMsg(m, idx)); } catch (e) {} }
+    else if (typeof renderMessages === 'function') { try { renderMessages(); } catch (e) {} }
   }
   window.__branchSwitch = switchVariant;
 
-  /* ---- 切换器 ---- */
   function injectBranchUI(el, msg, idx) {
     if (!el || !msg || msg.role !== 'assistant') return el;
     var vs = msg.variants;
@@ -529,7 +529,6 @@
     return el;
   }
 
-  /* ---- 包装 renderMsg ---- */
   var _origRenderMsg = renderMsg;
   var _newRenderMsg = function (msg, idx) {
     var el = _origRenderMsg(msg, idx);
@@ -539,7 +538,6 @@
   try { renderMsg = _newRenderMsg; } catch (e) {}
   try { window.renderMsg = _newRenderMsg; } catch (e) {}
 
-  /* ---- 包装 renderMessages（保险，兜住没走 renderMsg 的路径） ---- */
   if (typeof renderMessages === 'function') {
     var _origRenderMessages = renderMessages;
     var _newRenderMessages = function (newIdx) {
@@ -560,7 +558,6 @@
     try { window.renderMessages = _newRenderMessages; } catch (e) {}
   }
 
-  /* ---- 捕获阶段：记录「点了重新生成」 ---- */
   var pendingRegen = null;
 
   document.addEventListener('click', function (e) {
@@ -589,7 +586,6 @@
     } catch (err) {}
   }, true);
 
-  /* ---- 包装 runAssistant ---- */
   var _origRunAssistant = runAssistant;
   var _newRunAssistant = async function () {
     var pr = pendingRegen;
@@ -605,7 +601,6 @@
     if (!last || last.role !== 'assistant') return r;
     if (typeof last.content !== 'string' || !last.content.trim()) return r;
 
-    /* 内容跟旧版一模一样 → 大概率是用户取消了 confirm，不建分支 */
     var sameContent = (last.content === pr.content);
     var sameParts = ((last.parts || []).length === pr.partsLen);
     if (sameContent && sameParts) return r;
@@ -618,18 +613,14 @@
     try { if (typeof saveMessages === 'function') saveMessages(); } catch (e) {}
 
     var el = document.querySelector('#messages .msg[data-idx="' + li + '"]');
-    if (el) {
-      try { el.replaceWith(renderMsg(last, li)); } catch (e) {}
-    }
+    if (el) { try { el.replaceWith(renderMsg(last, li)); } catch (e) {} }
 
     say('已保留上一版，点 ‹ › 可切换', 3600);
-
     return r;
   };
   try { runAssistant = _newRunAssistant; } catch (e) {}
   try { window.runAssistant = _newRunAssistant; } catch (e) {}
 
-  /* ---- 启动：给已有消息补上切换器 ---- */
   setTimeout(function () {
     try {
       var nodes = document.querySelectorAll('#messages .msg');
