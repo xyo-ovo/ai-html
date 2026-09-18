@@ -4,11 +4,23 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#FBF8F3" />
-<title>AI HTML 工坊</title>
+<title>机语工坊</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23B08968'/%3E%3Ccircle cx='9' cy='9.5' r='1.7' fill='%23FFFDFA'/%3E%3Ccircle cx='14.6' cy='8.6' r='1.7' fill='%23FFFDFA'/%3E%3Ccircle cx='10' cy='14.6' r='1.7' fill='%23FFFDFA'/%3E%3C/svg%3E" />
 <script>try{var tm=localStorage.getItem('aih.themeMode')||localStorage.getItem('aih.theme')||'light';var tc=localStorage.getItem('aih.themeColor')||'coral';var d=tm==='dark'||(tm==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;r.classList.toggle('dark',d);r.dataset.theme=tc;}catch(e){}</script>
-<link rel="stylesheet" href="style.v21.css" />
-<link rel="stylesheet" href="style.themes.css" />
+<script>
+/* Service Worker：网络优先，改完刷新即最新 */
+try {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        try { if (reg && reg.update) reg.update(); } catch (e) {}
+      }).catch(function () {});
+    });
+  }
+} catch (e) {}
+</script>
+<link rel="stylesheet" href="style.v21.css?v=56" />
+<link rel="stylesheet" href="style.themes.css?v=56" />
 <style>
   .perm-row{display:flex;align-items:center;gap:14px;padding:13px 0}
   .perm-row + .perm-row{border-top:1px solid var(--line)}
@@ -42,8 +54,6 @@
   .find-bar input:focus{background:var(--bg3);border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
   .find-count{font-size:12px;color:var(--fg3);font-variant-numeric:tabular-nums;flex:0 0 auto;min-width:3.2em;text-align:right}
 
-  /* 只作用于「直接子按钮」（✕）——之前写成 .find-bar button，
-     把 .find-row 也一起选上了，32px 宽把文字挤成了一列 */
   .find-bar > button{
     width:32px;height:32px;border-radius:10px;flex:0 0 auto;
     display:grid;place-items:center;color:var(--fg2);font-size:14px;line-height:1;
@@ -205,8 +215,8 @@
   <div class="brand">
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
-    <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v46</span>
+    <span class="title" id="brand-name">机语工坊</span>
+    <span class="ver">v56</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -362,7 +372,7 @@
       </section>
       <section class="field">
         <label>名字</label>
-        <input id="pa-name" placeholder="AI HTML 工坊" />
+        <input id="pa-name" placeholder="机语工坊" />
       </section>
       <section class="field">
         <label>人设（这个对话的性格与规则）</label>
@@ -507,9 +517,9 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v29.js"></script>
-<script src="extra.v4.js"></script>
-<script src="card-fix.js"></script>
-<script src="patch3.js"></script>
+<script src="app.v29.js?v=56"></script>
+<script src="extra.v4.js?v=56"></script>
+<script src="card-fix.js?v=56"></script>
+<script src="patch3.js?v=56"></script>
 </body>
 </html>
