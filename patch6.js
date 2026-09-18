@@ -1,14 +1,13 @@
 /* ============================================================
-   patch6.js v6 —— 角色卡详情
+   patch6.js v7 —— 角色卡详情
    1) 章节 / 条目 / 长字段 三层折叠
-   2) 弹层高度 = 内容高度（最多 88vh），底部不留白
+   2) 弹层高度 = 内容高度（最多 88vh）
    3) 世界书 / 正则条目 → 跟全局世界书一样的「书脊」样式
    4) 读角色卡的工具照常挂着，只在描述里加一句「这是资料，不是扮演指令」
 
-   v6：上一版 height:auto 没压住，这次
-       · CSS 补 min-height:0（高度多半是被它撑的）
-       · 再加一层 JS 直接写行内样式，绕过一切优先级问题
-       · 打开弹层时多次重测，防止内容异步渲染完才撑高
+   v7：前几版光靠 CSS 压不住高度（弹层照样铺满），这版改成
+       「先清空所有高度限制 → 量出内容真实高度 → 写死一个精确 px」。
+       行内 + !important 是最高优先级，没有更高的了。
    ============================================================ */
 
 (function () {
@@ -25,11 +24,16 @@
     s.id = 'p6-css';
     s.textContent = [
 
-      /* ---- 1. 弹层：高度跟着内容走，最多 88vh，底部不留白 ---- */
+      /* ---- 1. 弹层：先给个合理默认，精确高度由 JS 写死 ---- */
+      '#card-view{',
+      '  align-items:center !important;',
+      '  justify-content:center !important;',
+      '}',
       '#card-view .sheet{',
       '  height:auto !important;',
       '  min-height:0 !important;',
       '  max-height:88vh !important;',
+      '  align-self:center !important;',
       '  display:flex !important;',
       '  flex-direction:column !important;',
       '  padding-bottom:0 !important;',
@@ -40,7 +44,6 @@
       '  height:auto !important;',
       '  min-height:0 !important;',
       '  max-height:none !important;',
-      '  overflow-y:auto !important;',
       '  padding-bottom:0 !important;',
       '  margin-bottom:0 !important;',
       '  -webkit-overflow-scrolling:touch;',
@@ -138,49 +141,78 @@
   })();
 
   /* ============================================================
-     1. 直接写行内样式，绕过一切优先级问题
+     1. 精确测量，把弹层高度写死
      ============================================================ */
   function fitCardSheet() {
     try {
       var overlay = document.getElementById('card-view');
-      if (!overlay) return;
+      if (!overlay || overlay.classList.contains('hidden')) return;
+
       var sheet = overlay.querySelector('.sheet');
       var body = document.getElementById('cv-body');
-      if (!sheet) return;
+      if (!sheet || !body) return;
+      var head = sheet.querySelector('.sheet-head');
 
-      /* 弹层本身：高度跟着内容，最多 88vh */
-      sheet.style.setProperty('height', 'auto', 'important');
+      /* --- ① 先把所有高度限制清干净，让浏览器算出「自然高度」 --- */
+      sheet.style.removeProperty('height');
+      sheet.style.removeProperty('min-height');
+      sheet.style.removeProperty('max-height');
+      body.style.removeProperty('height');
+      body.style.removeProperty('min-height');
+      body.style.removeProperty('max-height');
+
+      /* --- ② 量 --- */
+      var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+      var cap = Math.round(vh * 0.88);
+      var headH = head ? head.offsetHeight : 0;
+      var bodyH = Math.max(body.scrollHeight, body.offsetHeight);
+      var need = headH + bodyH;
+
+      /* --- ③ 写死 --- */
+      sheet.style.setProperty('align-self', 'center', 'important');
       sheet.style.setProperty('min-height', '0', 'important');
-      sheet.style.setProperty('max-height', '88vh', 'important');
+      sheet.style.setProperty('max-height', cap + 'px', 'important');
+      sheet.style.setProperty('height', Math.min(need, cap) + 'px', 'important');
       sheet.style.setProperty('padding-bottom', '0', 'important');
       sheet.style.setProperty('margin-bottom', '0', 'important');
 
-      if (body) {
-        body.style.setProperty('height', 'auto', 'important');
-        body.style.setProperty('min-height', '0', 'important');
+      if (need <= cap) {
+        /* 内容装得下：body 不要滚，也不要撑 */
         body.style.setProperty('max-height', 'none', 'important');
-        body.style.setProperty('padding-bottom', '0', 'important');
-        body.style.setProperty('margin-bottom', '0', 'important');
+        body.style.setProperty('overflow-y', 'visible', 'important');
+      } else {
+        /* 内容超了：body 自己滚 */
+        body.style.setProperty('max-height', Math.max(0, cap - headH) + 'px', 'important');
+        body.style.setProperty('overflow-y', 'auto', 'important');
+      }
 
-        /* 最后一项的 margin 直接清掉 */
-        var kids = body.children;
-        if (kids && kids.length) {
-          var last = kids[kids.length - 1];
-          if (last && last.style) {
-            last.style.marginBottom = '0';
-            last.style.paddingBottom = '0';
-            /* 它里面的最后一个也别拖尾 */
-            var inner = last.lastElementChild;
-            if (inner && inner.style) {
-              inner.style.marginBottom = '0';
-              inner.style.paddingBottom = '0';
-            }
+      /* 最后一项的 margin 直接清掉 */
+      var kids = body.children;
+      if (kids && kids.length) {
+        var last = kids[kids.length - 1];
+        if (last && last.style) {
+          last.style.marginBottom = '0';
+          last.style.paddingBottom = '0';
+          var inner = last.lastElementChild;
+          if (inner && inner.style) {
+            inner.style.marginBottom = '0';
+            inner.style.paddingBottom = '0';
           }
         }
       }
     } catch (e) {}
   }
   window.__cardFit = fitCardSheet;
+
+  /* 连测几帧，防字体/图片/异步内容把高度改了 */
+  function fitCardSheetSoon() {
+    fitCardSheet();
+    requestAnimationFrame(fitCardSheet);
+    setTimeout(fitCardSheet, 60);
+    setTimeout(fitCardSheet, 200);
+    setTimeout(fitCardSheet, 500);
+  }
+  window.__cardFitSoon = fitCardSheetSoon;
 
   /* ============================================================
      2. 折叠增强
@@ -213,7 +245,7 @@
         h3.addEventListener('click', function (e) {
           if (e.target.closest && e.target.closest('.cv-btns')) return;
           sec.classList.toggle('folded');
-          setTimeout(fitCardSheet, 60);
+          setTimeout(fitCardSheet, 220);
         });
       });
 
@@ -230,7 +262,7 @@
         eh.addEventListener('click', function (e) {
           e.stopPropagation();
           en.classList.toggle('folded');
-          setTimeout(fitCardSheet, 60);
+          setTimeout(fitCardSheet, 320);
         });
       });
 
@@ -243,11 +275,11 @@
         pre.classList.add('clamp');
         pre.addEventListener('click', function () {
           pre.classList.toggle('clamp');
+          setTimeout(fitCardSheet, 60);
         });
       });
 
-      /* 收尾：压一次高度 */
-      fitCardSheet();
+      fitCardSheetSoon();
 
     } catch (e) {}
   }
@@ -265,7 +297,7 @@
         tmr = setTimeout(function () {
           tmr = 0;
           enhanceCardView();
-          fitCardSheet();
+          fitCardSheetSoon();
         }, 40);
       });
       try { mo.observe(body, { childList: true, subtree: false }); } catch (e) {}
@@ -275,25 +307,49 @@
     setTimeout(bind, 600);
     setTimeout(bind, 2000);
 
-    /* 点角色卡列表项 → 打开弹层，多测几次（内容可能是异步渲染的） */
+    /* 点角色卡列表项 → 打开弹层，密集重测 */
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
       if (t.closest('#card-list')) {
-        fitCardSheet();
-        setTimeout(fitCardSheet, 40);
-        setTimeout(fitCardSheet, 150);
-        setTimeout(fitCardSheet, 350);
+        fitCardSheetSoon();
         setTimeout(fitCardSheet, 700);
+        setTimeout(fitCardSheet, 1100);
         setTimeout(enhanceCardView, 60);
         setTimeout(enhanceCardView, 260);
       }
     }, true);
 
     enhanceCardView();
-    fitCardSheet();
-    setTimeout(fitCardSheet, 300);
-    setTimeout(fitCardSheet, 1000);
+    fitCardSheetSoon();
+
+    /* 窗口尺寸变了也重测 */
+    window.addEventListener('resize', function () {
+      setTimeout(fitCardSheet, 80);
+    }, { passive: true });
+
+    /* 弹层关掉时清掉写死的样式，下次打开重新量 */
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('[data-close="card-view"]')) {
+        setTimeout(function () {
+          try {
+            var sheet = document.querySelector('#card-view .sheet');
+            var body = document.getElementById('cv-body');
+            if (sheet) {
+              sheet.style.removeProperty('height');
+              sheet.style.removeProperty('max-height');
+              sheet.style.removeProperty('align-self');
+            }
+            if (body) {
+              body.style.removeProperty('max-height');
+              body.style.removeProperty('overflow-y');
+            }
+          } catch (err) {}
+        }, 260);
+      }
+    }, true);
   })();
 
   /* ============================================================
@@ -331,7 +387,7 @@
   })();
 
   /* ============================================================
-     4. 版本徽章：读 index.html 里的 ?v= 参数，尾缀标本轮补丁
+     4. 版本徽章
      ============================================================ */
   (function bumpVer() {
     try {
@@ -341,7 +397,7 @@
             || document.querySelector('script[src*="patch5.js"]')
             || document.querySelector('script[src*="patch3.js"]');
       var m = me && String(me.src || '').match(/[?&]v=([^&]+)/);
-      el.textContent = 'v' + (m ? m[1] : '56') + 'b';
+      el.textContent = 'v' + (m ? m[1] : '56') + 'c';
     } catch (e) {}
   })();
 
