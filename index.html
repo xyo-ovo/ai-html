@@ -16,21 +16,25 @@
   .perm-name{font-size:14px;font-weight:600;letter-spacing:-.01em}
   .perm-sub{font-size:12px;color:var(--fg3);margin-top:3px;line-height:1.65}
 
-  /* 预览：整层可滚动，HTML 按内容高度自适应，工具栏吸顶 */
-  #preview{display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain}
-  #preview .preview-bar{position:sticky;top:0;z-index:3}
+  /* 预览：HTML 全屏铺满（!important 覆盖 JS 设的自适应高度） */
+  #preview{display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:contain}
+  #preview .preview-bar{flex:0 0 auto;position:relative;z-index:3}
   #pv-frame{
-    flex:0 0 auto;width:100%;min-height:340px;border:none;background:#fff;display:block;
+    flex:1 1 auto;width:100%;height:auto !important;min-height:0;
+    border:none;background:#fff;display:block;
   }
   #pv-image{
-    flex:0 0 auto;max-width:100%;display:block;margin:0 auto;
-    padding:20px;background:var(--bg2);
+    flex:1 1 auto;min-height:0;width:100%;height:auto;
+    object-fit:contain;display:block;background:var(--bg2);
+    overflow:auto;padding:16px;
   }
   #pv-code{
-    flex:0 0 auto;margin:0;overflow:visible;padding:22px 20px calc(26px + env(safe-area-inset-bottom));
+    flex:1 1 auto;min-height:0;margin:0;overflow:auto;
+    padding:22px 20px calc(26px + env(safe-area-inset-bottom));
     font-family:var(--font-mono);font-size:13px;line-height:1.75;
     color:var(--fg);background:var(--bg2);
     white-space:pre-wrap;word-break:break-word;
+    -webkit-overflow-scrolling:touch;
   }
 
   /* 附件预览条 */
@@ -169,7 +173,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v29</span>
+    <span class="ver">v30</span>
   </div>
   <div class="actions">
     <button id="btn-persona" class="icon-btn" title="AI 人设（当前对话）"><svg class="ic"><use href="#i-edit"/></svg></button>
