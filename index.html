@@ -1068,7 +1068,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">机语工坊</span>
-    <span class="ver">v70</span>
+    <span class="ver">v71</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -1369,13 +1369,13 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v29.js?v=70"></script>
-<script src="extra.v4.js?v=70"></script>
-<script src="patch.js?v=70"></script>
+<script src="app.v29.js?v=71"></script>
+<script src="extra.v4.js?v=71"></script>
+<script src="patch.js?v=71"></script>
 <script>
 /* ============================================================
-   v70
-   patch.js 里已自动给系统提示词追加「代码块 → 文件卡片」说明；
+   v71
+   patch.js 里注入了：网页搜索、角色卡分类标签、代码块说明等；
    这里只兜底：徽章 + 清掉任何残留的行内高度
    ============================================================ */
 (function () {
@@ -1383,7 +1383,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 
   function clean() {
     var v = document.querySelector('.ver');
-    if (v && v.textContent !== 'v70') v.textContent = 'v70';
+    if (v && v.textContent !== 'v71') v.textContent = 'v71';
 
     var ov = document.getElementById('card-view');
     if (!ov || ov.classList.contains('hidden')) return;
