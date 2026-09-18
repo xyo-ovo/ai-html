@@ -1,11 +1,13 @@
 /* ============================================================
-   patch3.js v3
+   patch3.js v4
    1) 搜索重做（结果列表点选）
    2) 修竖排（覆盖 .find-bar button 误伤 .find-row）
    3) 正文字体上传（存 IndexedDB，FontFace 加载，只作用正文）
+   4) 分支对话（重新生成时保留旧版本，左右箭头切换）
 
-   字体文件通常几 MB，localStorage 装不下，所以用 IndexedDB。
-   UI 由本脚本动态注入到「设置 → 外观」下方，无需改 index.html。
+   —— 分支部分依赖 app.v29.js 里的全局函数：
+      runAssistant / renderMsg / renderMessages / messages / saveMessages
+      它们都是脚本顶层的声明，本文件在其后加载，可以直接覆盖。
    ============================================================ */
 
 /* ---------- 0. 注入覆盖样式 + 标版本 ---------- */
@@ -23,10 +25,17 @@
       '.find-bar .find-list .find-row .fr-role{flex:0 0 auto !important;font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg2);line-height:1.5;white-space:nowrap}',
       '.find-bar .find-list .find-row .fr-role.u{background:var(--acc-soft);color:var(--acc)}',
       '.find-bar .find-list .find-row .fr-txt{flex:1 1 auto !important;min-width:0 !important;width:auto !important;color:var(--fg2);word-break:break-word;white-space:normal !important;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}',
-      /* 字体上传区 */
       '#font-field .font-name{font-size:12.5px;color:var(--fg2);margin:6px 0 10px;word-break:break-all}',
       '#font-field .font-name b{color:var(--acc)}',
       '#font-field .font-btns{display:flex;gap:8px;flex-wrap:wrap}',
+      /* 分支切换器 */
+      '.msg-branch{display:flex;align-items:center;gap:6px;margin:2px 0 8px 2px;font-size:11.5px;color:var(--fg3);animation:msgIn .2s cubic-bezier(.16,1,.3,1) both}',
+      '.msg-branch button{width:23px;height:23px;border-radius:8px;border:1px solid var(--line2);background:var(--bg2);color:var(--fg2);display:grid;place-items:center;cursor:pointer;font-size:14px;line-height:1;padding:0;transition:border-color .15s ease,color .15s ease,transform .12s ease}',
+      '.msg-branch button:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}',
+      '.msg-branch button:active:not(:disabled){transform:scale(.9)}',
+      '.msg-branch button:disabled{opacity:.3;cursor:default}',
+      '.msg-branch .br-n{font-variant-numeric:tabular-nums;padding:0 2px;letter-spacing:.02em}',
+      '.msg-branch .br-tag{font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:2px}',
     ].join('\n');
     (document.head || document.documentElement).appendChild(s);
   } catch (e) {}
@@ -35,7 +44,7 @@
 (function bumpVer() {
   try {
     var v = document.querySelector('.ver');
-    if (v) v.textContent = 'v47';
+    if (v) v.textContent = 'v48';
   } catch (e) {}
 })();
 
@@ -56,7 +65,6 @@
     } catch (e) {}
   }
 
-  /* ---- IndexedDB 小工具 ---- */
   function openDB() {
     return new Promise(function (res, rej) {
       var r;
@@ -90,14 +98,12 @@
     });
   }
 
-  /* ---- 把字体挂到页面 ---- */
   function mountStyle() {
     var s = document.getElementById(STYLE_ID);
     if (s) return s;
     s = document.createElement('style');
     s.id = STYLE_ID;
     s.textContent = [
-      /* 气泡内所有文字换成用户字体 */
       '.msg .bubble,',
       '.msg .bubble p, .msg .bubble li, .msg .bubble h1, .msg .bubble h2,',
       '.msg .bubble h3, .msg .bubble h4, .msg .bubble blockquote,',
@@ -105,7 +111,6 @@
       '.msg .bubble em, .msg .bubble span:not(.ic) {',
       '  font-family: "' + FAMILY + '", var(--font-sans) !important;',
       '}',
-      /* 代码块 / 行内代码保持等宽 */
       '.msg .bubble pre, .msg .bubble pre *,',
       '.msg .bubble code, .msg .bubble kbd, .msg .bubble samp {',
       '  font-family: var(--font-mono) !important;',
@@ -146,7 +151,6 @@
     });
   }
 
-  /* ---- UI ---- */
   function buildUI() {
     var body = document.querySelector('#page-settings .page-body');
     if (!body) return false;
@@ -166,7 +170,6 @@
       '<p class="hint">支持 ttf / otf / woff / woff2。只改聊天气泡里的正文，代码块保持等宽。</p>',
     ].join('\n');
 
-    /* 插到「清空当前对话」那行之前 */
     var anchor = body.lastElementChild;
     if (anchor && anchor.classList && anchor.classList.contains('row')) {
       body.insertBefore(sec, anchor);
@@ -242,7 +245,6 @@
     return true;
   }
 
-  /* ---- 启动 ---- */
   function boot() {
     buildUI();
     idbGet(KEY).then(function (rec) {
@@ -264,7 +266,6 @@
   setTimeout(buildUI, 600);
   setTimeout(buildUI, 1800);
 
-  /* 每次切到设置页都确认 UI 在 */
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (t && t.closest && t.closest('#tabbar button[data-page="settings"]')) {
@@ -411,4 +412,234 @@
       }, 30);
     }
   }, true);
+})();
+
+/* ---------- 2. 分支对话 ---------- */
+(function branchFeature() {
+  'use strict';
+
+  if (typeof renderMsg !== 'function' || typeof runAssistant !== 'function') {
+    try { console.warn('[branch] 核心函数未就绪，跳过'); } catch (e) {}
+    return;
+  }
+
+  function say(msg, ms) {
+    try {
+      if (typeof toast === 'function') toast(msg, ms || 3200);
+    } catch (e) {}
+  }
+
+  /* ---- 快照 ---- */
+  function snap(m) {
+    var o = {
+      content: m.content,
+      reasoning: m.reasoning,
+      thinkSecs: m.thinkSecs,
+      usage: m.usage,
+      model: m.model,
+      time: m.time,
+    };
+    try { o.parts = m.parts ? JSON.parse(JSON.stringify(m.parts)) : undefined; }
+    catch (e) { o.parts = m.parts; }
+    return o;
+  }
+
+  function ensureVariants(m) {
+    if (!m.variants || !m.variants.length) {
+      m.variants = [snap(m)];
+      m.vIdx = 0;
+    }
+    if (typeof m.vIdx !== 'number' || m.vIdx < 0 || m.vIdx >= m.variants.length) {
+      m.vIdx = m.variants.length - 1;
+    }
+    return m.variants;
+  }
+
+  /* ---- 切换 ---- */
+  function switchVariant(idx, vi) {
+    var m = (typeof messages !== 'undefined' && messages) ? messages[idx] : null;
+    if (!m || !m.variants) return;
+    if (vi < 0 || vi >= m.variants.length) return;
+    if (vi === m.vIdx) return;
+
+    m.vIdx = vi;
+    var v = m.variants[vi];
+    m.content = v.content;
+    m.parts = v.parts;
+    m.reasoning = v.reasoning;
+    m.thinkSecs = v.thinkSecs;
+    m.usage = v.usage;
+    m.model = v.model;
+    m.time = v.time;
+
+    try { if (typeof saveMessages === 'function') saveMessages(); } catch (e) {}
+
+    var el = document.querySelector('#messages .msg[data-idx="' + idx + '"]');
+    if (el) {
+      try { el.replaceWith(renderMsg(m, idx)); } catch (e) {}
+    } else if (typeof renderMessages === 'function') {
+      try { renderMessages(); } catch (e) {}
+    }
+  }
+  window.__branchSwitch = switchVariant;
+
+  /* ---- 切换器 ---- */
+  function injectBranchUI(el, msg, idx) {
+    if (!el || !msg || msg.role !== 'assistant') return el;
+    var vs = msg.variants;
+    if (!vs || vs.length < 2) return el;
+    if (el.querySelector('.msg-branch')) return el;
+
+    var meta = el.querySelector('.msg-meta');
+    if (!meta || !meta.parentNode) return el;
+
+    var i = (typeof msg.vIdx === 'number') ? msg.vIdx : (vs.length - 1);
+
+    var bar = document.createElement('div');
+    bar.className = 'msg-branch';
+
+    var prev = document.createElement('button');
+    prev.type = 'button';
+    prev.textContent = '‹';
+    prev.title = '上一版';
+    prev.disabled = i <= 0;
+    prev.onclick = function (e) { e.stopPropagation(); switchVariant(idx, i - 1); };
+
+    var num = document.createElement('span');
+    num.className = 'br-n';
+    num.textContent = (i + 1) + ' / ' + vs.length;
+
+    var next = document.createElement('button');
+    next.type = 'button';
+    next.textContent = '›';
+    next.title = '下一版';
+    next.disabled = i >= vs.length - 1;
+    next.onclick = function (e) { e.stopPropagation(); switchVariant(idx, i + 1); };
+
+    var tag = document.createElement('span');
+    tag.className = 'br-tag';
+    tag.textContent = '分支';
+
+    bar.appendChild(prev);
+    bar.appendChild(num);
+    bar.appendChild(next);
+    bar.appendChild(tag);
+
+    meta.parentNode.insertBefore(bar, meta);
+    return el;
+  }
+
+  /* ---- 包装 renderMsg ---- */
+  var _origRenderMsg = renderMsg;
+  var _newRenderMsg = function (msg, idx) {
+    var el = _origRenderMsg(msg, idx);
+    try { injectBranchUI(el, msg, idx); } catch (e) {}
+    return el;
+  };
+  try { renderMsg = _newRenderMsg; } catch (e) {}
+  try { window.renderMsg = _newRenderMsg; } catch (e) {}
+
+  /* ---- 包装 renderMessages（保险，兜住没走 renderMsg 的路径） ---- */
+  if (typeof renderMessages === 'function') {
+    var _origRenderMessages = renderMessages;
+    var _newRenderMessages = function (newIdx) {
+      _origRenderMessages(newIdx);
+      try {
+        var nodes = document.querySelectorAll('#messages .msg');
+        Array.prototype.forEach.call(nodes, function (el) {
+          var i = Number(el.dataset.idx);
+          var m = messages[i];
+          if (!m || m.role !== 'assistant') return;
+          if (!m.variants || m.variants.length < 2) return;
+          if (el.querySelector('.msg-branch')) return;
+          injectBranchUI(el, m, i);
+        });
+      } catch (e) {}
+    };
+    try { renderMessages = _newRenderMessages; } catch (e) {}
+    try { window.renderMessages = _newRenderMessages; } catch (e) {}
+  }
+
+  /* ---- 捕获阶段：记录「点了重新生成」 ---- */
+  var pendingRegen = null;
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var btn = t.closest('.msg-actions button[data-act="regen"]');
+    if (!btn) return;
+
+    var msgEl = btn.closest('.msg');
+    if (!msgEl || msgEl.dataset.idx === undefined) return;
+
+    var idx = Number(msgEl.dataset.idx);
+    var m = messages[idx];
+    if (!m || m.role !== 'assistant') return;
+
+    try {
+      var vs = ensureVariants(m);
+      pendingRegen = {
+        idx: idx,
+        content: m.content,
+        partsLen: (m.parts || []).length,
+        variants: vs.slice(),
+        vIdx: m.vIdx,
+        ts: Date.now(),
+      };
+    } catch (err) {}
+  }, true);
+
+  /* ---- 包装 runAssistant ---- */
+  var _origRunAssistant = runAssistant;
+  var _newRunAssistant = async function () {
+    var pr = pendingRegen;
+    pendingRegen = null;
+    if (pr && Date.now() - pr.ts > 120000) pr = null;
+
+    var r = await _origRunAssistant();
+
+    if (!pr) return r;
+
+    var li = messages.length - 1;
+    var last = messages[li];
+    if (!last || last.role !== 'assistant') return r;
+    if (typeof last.content !== 'string' || !last.content.trim()) return r;
+
+    /* 内容跟旧版一模一样 → 大概率是用户取消了 confirm，不建分支 */
+    var sameContent = (last.content === pr.content);
+    var sameParts = ((last.parts || []).length === pr.partsLen);
+    if (sameContent && sameParts) return r;
+
+    var variants = pr.variants.slice();
+    variants.push(snap(last));
+    last.variants = variants;
+    last.vIdx = variants.length - 1;
+
+    try { if (typeof saveMessages === 'function') saveMessages(); } catch (e) {}
+
+    var el = document.querySelector('#messages .msg[data-idx="' + li + '"]');
+    if (el) {
+      try { el.replaceWith(renderMsg(last, li)); } catch (e) {}
+    }
+
+    say('已保留上一版，点 ‹ › 可切换', 3600);
+
+    return r;
+  };
+  try { runAssistant = _newRunAssistant; } catch (e) {}
+  try { window.runAssistant = _newRunAssistant; } catch (e) {}
+
+  /* ---- 启动：给已有消息补上切换器 ---- */
+  setTimeout(function () {
+    try {
+      var nodes = document.querySelectorAll('#messages .msg');
+      Array.prototype.forEach.call(nodes, function (el) {
+        var i = Number(el.dataset.idx);
+        var m = messages[i];
+        if (!m || m.role !== 'assistant') return;
+        if (!m.variants || m.variants.length < 2) return;
+        injectBranchUI(el, m, i);
+      });
+    } catch (e) {}
+  }, 400);
 })();
