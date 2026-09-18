@@ -16,7 +16,7 @@
   .perm-name{font-size:14px;font-weight:600;letter-spacing:-.01em}
   .perm-sub{font-size:12px;color:var(--fg3);margin-top:3px;line-height:1.65}
 
-  /* 预览：HTML 全屏铺满（!important 覆盖 JS 设的自适应高度） */
+  /* 预览：HTML 全屏铺满 */
   #preview{display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:contain}
   #preview .preview-bar{flex:0 0 auto;position:relative;z-index:3}
   #pv-frame{
@@ -36,6 +36,42 @@
     white-space:pre-wrap;word-break:break-word;
     -webkit-overflow-scrolling:touch;
   }
+
+  /* 代码块：行号 + 语法高亮 */
+  .code-block pre code .cl{display:block;min-height:1.7em}
+  .code-block pre code .cl::before{
+    content:attr(data-n);
+    display:inline-block;width:2.2em;margin-right:.9em;
+    text-align:right;color:rgba(255,255,255,.2);
+    user-select:none;-webkit-user-select:none;
+  }
+  .tk-s{color:#9BD08C}
+  .tk-c{color:#6F7A70;font-style:italic}
+  .tk-n{color:#9AC6E8}
+  .tk-k{color:#E2A87C}
+  .tk-p{color:#A79C90}
+
+  /* 对话内搜索条 */
+  .find-bar{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;
+    padding:9px 14px;border-bottom:1px solid var(--line);
+    background:var(--bg2);
+    animation:msgIn .22s cubic-bezier(.16,1,.3,1) both;
+  }
+  .find-bar input{
+    flex:1 1 auto;padding:9px 13px;border-radius:12px;font-size:14px;
+    background:var(--bg3);border-color:transparent;
+  }
+  .find-bar input:focus{background:var(--bg3);border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
+  .find-count{font-size:12px;color:var(--fg3);font-variant-numeric:tabular-nums;flex:0 0 auto;min-width:3.2em;text-align:right}
+  .find-bar button{
+    width:32px;height:32px;border-radius:10px;flex:0 0 auto;
+    display:grid;place-items:center;color:var(--fg2);font-size:14px;line-height:1;
+    transition:background-color .15s ease,color .15s ease;
+  }
+  .find-bar button:hover{background:var(--bg3);color:var(--fg)}
+  .msg.find-hit{background:var(--acc-soft);border-radius:16px;padding:10px 12px}
+  .msg.find-cur{background:var(--acc-soft);border-radius:16px;padding:10px 12px;box-shadow:inset 0 0 0 2px var(--acc)}
 
   /* 附件预览条 */
   .attach-bar{max-width:680px;margin:0 auto 9px;animation:msgIn .24s cubic-bezier(.16,1,.3,1) both}
@@ -99,7 +135,6 @@
   .att-chip .ic{width:14px;height:14px;flex:0 0 auto}
   .att-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .att-text{white-space:pre-wrap;word-break:break-word}
-  /* 只带附件（无文字）时：气泡透明，chip 换回主题色 */
   .msg.user .bubble.bare{background:none;box-shadow:none;padding:0;border-radius:0;max-width:100%}
   .msg.user .bubble.bare .att-chip{
     background:var(--bg3);border-color:var(--line2);color:var(--fg);
@@ -165,6 +200,8 @@
 <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
 <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v3.5A1.5 1.5 0 0 1 19.5 20h-15A1.5 1.5 0 0 1 3 18.5V15"/><path d="m7 8 5-5 5 5"/><path d="M12 3v13"/></symbol>
+<symbol id="i-arrowDown" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
 </defs>
 </svg>
 
@@ -173,9 +210,10 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v30</span>
+    <span class="ver">v31</span>
   </div>
   <div class="actions">
+    <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
     <button id="btn-persona" class="icon-btn" title="AI 人设（当前对话）"><svg class="ic"><use href="#i-edit"/></svg></button>
   </div>
 </header>
@@ -183,6 +221,13 @@
 <main id="pages">
 
   <section id="page-chat" class="page active">
+    <div id="find-bar" class="find-bar hidden">
+      <input id="find-input" placeholder="在对话中搜索…" />
+      <span id="find-count" class="find-count">0/0</span>
+      <button id="find-prev" title="上一个">↑</button>
+      <button id="find-next" title="下一个">↓</button>
+      <button id="find-close" title="关闭">✕</button>
+    </div>
     <div id="chat"><div id="messages"></div></div>
     <footer id="composer">
       <div id="edit-bar" class="edit-bar hidden">
@@ -288,6 +333,13 @@
     <div class="sheet-head"><h2>AI 人设</h2><button class="close" data-close="persona"><svg class="ic"><use href="#i-x"/></svg></button></div>
     <div class="sheet-body">
       <p id="pa-scope" class="hint" style="margin-top:-6px">这套人设只属于当前对话</p>
+
+      <section class="field">
+        <label>角色卡</label>
+        <button id="pa-import-card" class="ghost"><svg class="ic"><use href="#i-upload"/></svg>导入角色卡（PNG / JSON）</button>
+        <p class="hint">一次导入卡里的全部数据：人设、开场白、内嵌世界书。导入后 AI 就能读到这些设定。</p>
+      </section>
+
       <section class="field">
         <label>头像（一个 emoji）</label>
         <input id="pa-avatar" maxlength="4" placeholder="🎨" />
@@ -332,6 +384,7 @@
     </div>
   </div>
 </div>
+<input type="file" id="pick-card" accept=".png,.json,image/png,application/json" hidden />
 
 <div id="lore-edit" class="overlay hidden">
   <div class="sheet">
@@ -433,5 +486,6 @@
 <div id="toast" class="toast hidden"></div>
 
 <script src="app.v29.js"></script>
+<script src="extra.v1.js"></script>
 </body>
 </html>
