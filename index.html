@@ -1003,7 +1003,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}}
 
 /* ============================================================
-   v65：折叠禁用（回到 v51 之前的干净样子）
+   v66：折叠禁用（回到干净样子）
    ============================================================ */
 #card-view .cv-sec.folded > *:not(h3),
 #card-view .cv-entry.folded .ec{
@@ -1022,7 +1022,6 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 #card-view .cv-sec > h3::before{content:none !important}
 #card-view .cv-entry .eh{cursor:default !important}
 #card-view .cv-entry .eh::after{content:none !important}
-#card-view .cv-sec > h3 .cv-count{display:none !important}
 </style>
 </head>
 <body>
@@ -1071,7 +1070,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">机语工坊</span>
-    <span class="ver">v65</span>
+    <span class="ver">v66</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -1372,28 +1371,28 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v29.js?v=61"></script>
-<script src="extra.v4.js?v=61"></script>
-<script src="patch.js?v=65"></script>
+<script src="app.v29.js?v=66"></script>
+<script src="extra.v4.js?v=66"></script>
+<script src="patch.js?v=66"></script>
 <script>
 /* ============================================================
-   v65：折叠禁用 + 撤掉写死高度 + 徽章不再跳
-   ① 徽章在最前面设，不受弹层状态影响，直接压住 patch.js 写的 v61
-   ② 撤掉 patch.js 写死的行内高度
-   ③ 展开所有折叠（章节 / 条目 / 长字段），保持"内容全展开"
+   v66
+   patch.js 已不再写死弹层高度、也不再折叠，这里只兜底：
+   ① 徽章在最前面设，压住别的脚本
+   ② 万一有残留的行内高度 / folded / clamp，顺手清掉
    ============================================================ */
 (function () {
   'use strict';
 
   function clean() {
-    /* ① 徽章先设（不受弹层状态影响） */
+    /* ① 徽章 */
     var v = document.querySelector('.ver');
-    if (v && v.textContent !== 'v65') v.textContent = 'v65';
+    if (v && v.textContent !== 'v66') v.textContent = 'v66';
 
     var ov = document.getElementById('card-view');
     if (!ov || ov.classList.contains('hidden')) return;
 
-    /* ② 撤掉所有写死的行内高度 */
+    /* ② 清掉任何写死的行内高度 */
     var s = ov.querySelector('.sheet');
     if (s && s.style && s.style.length) {
       ['height', 'max-height', 'min-height', 'flex', 'align-self', 'padding-bottom', 'margin-bottom']
@@ -1405,7 +1404,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
         .forEach(function (k) { b.style.removeProperty(k); });
     }
 
-    /* ③ 展开所有折叠 */
+    /* ③ 清掉残留的折叠 / 截断 */
     if (b) {
       var folded = b.querySelectorAll('.folded');
       Array.prototype.forEach.call(folded, function (el) { el.classList.remove('folded'); });
@@ -1415,7 +1414,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
   }
 
   clean();
-  setInterval(clean, 100);
+  setInterval(clean, 120);
 })();
 </script>
 </body>
