@@ -1,13 +1,11 @@
 /* ============================================================
-   patch3.js v2 —— 搜索重做 + 修竖排
+   patch3.js v3
+   1) 搜索重做（结果列表点选）
+   2) 修竖排（覆盖 .find-bar button 误伤 .find-row）
+   3) 正文字体上传（存 IndexedDB，FontFace 加载，只作用正文）
 
-   竖排根因：index.html 里有一条
-     .find-bar button{ width:32px; height:32px; ... }
-   本意是给「✕ 关闭」按钮用的，但 .find-row 也是 <button>
-   且在 .find-bar 内，于是每条结果都被压成 32px 宽，
-   文字挤成一列 —— 看着就是"竖着"。
-
-   本脚本注入一条更高优先级的覆盖样式修掉，不用重写 index.html。
+   字体文件通常几 MB，localStorage 装不下，所以用 IndexedDB。
+   UI 由本脚本动态注入到「设置 → 外观」下方，无需改 index.html。
    ============================================================ */
 
 /* ---------- 0. 注入覆盖样式 + 标版本 ---------- */
@@ -17,17 +15,18 @@
     var s = document.createElement('style');
     s.id = 'find-fix-css';
     s.textContent = [
-      /* 只作用于直接子按钮（✕），不再波及 .find-row */
       '.find-bar > button{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--fg2);font-size:14px;line-height:1;background:none;border:none;cursor:pointer}',
       '.find-bar > button:hover{background:var(--bg3);color:var(--fg)}',
-      /* 结果行：撑满、自动高、横向排列 */
       '.find-bar .find-list .find-row{width:100% !important;height:auto !important;min-height:0 !important;display:flex !important;align-items:flex-start !important;gap:9px !important;padding:9px 11px !important;border-radius:11px !important;text-align:left !important;font-size:12.5px !important;line-height:1.6 !important;background:none !important;border:none !important;cursor:pointer !important;box-sizing:border-box !important}',
       '.find-bar .find-list .find-row:hover{background:var(--bg3) !important}',
       '.find-bar .find-list .find-row .fr-n{flex:0 0 1.8em !important;text-align:right;color:var(--fg3);font-size:11.5px;padding-top:1px}',
       '.find-bar .find-list .find-row .fr-role{flex:0 0 auto !important;font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg2);line-height:1.5;white-space:nowrap}',
       '.find-bar .find-list .find-row .fr-role.u{background:var(--acc-soft);color:var(--acc)}',
-      /* 摘要：占满剩余宽度，最多两行 */
       '.find-bar .find-list .find-row .fr-txt{flex:1 1 auto !important;min-width:0 !important;width:auto !important;color:var(--fg2);word-break:break-word;white-space:normal !important;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}',
+      /* 字体上传区 */
+      '#font-field .font-name{font-size:12.5px;color:var(--fg2);margin:6px 0 10px;word-break:break-all}',
+      '#font-field .font-name b{color:var(--acc)}',
+      '#font-field .font-btns{display:flex;gap:8px;flex-wrap:wrap}',
     ].join('\n');
     (document.head || document.documentElement).appendChild(s);
   } catch (e) {}
@@ -36,10 +35,245 @@
 (function bumpVer() {
   try {
     var v = document.querySelector('.ver');
-    if (v) v.textContent = 'v46';
+    if (v) v.textContent = 'v47';
   } catch (e) {}
 })();
 
+/* ---------- 0.5 正文字体上传 ---------- */
+(function fontFeature() {
+  'use strict';
+
+  var DB_NAME = 'aih-font';
+  var STORE = 'fonts';
+  var KEY = 'current';
+  var FAMILY = 'aih-user-font';
+  var STYLE_ID = 'aih-font-style';
+
+  function say(msg, ms) {
+    try {
+      if (typeof toast === 'function') toast(msg, ms || 3600);
+      else console.warn('[font]', msg);
+    } catch (e) {}
+  }
+
+  /* ---- IndexedDB 小工具 ---- */
+  function openDB() {
+    return new Promise(function (res, rej) {
+      var r;
+      try { r = indexedDB.open(DB_NAME, 1); }
+      catch (e) { rej(e); return; }
+      r.onupgradeneeded = function () {
+        try { r.result.createObjectStore(STORE); } catch (e) {}
+      };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+  }
+  function idbPut(key, val) {
+    return openDB().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(val, key);
+        tx.oncomplete = function () { res(); };
+        tx.onerror = function () { rej(tx.error); };
+      });
+    });
+  }
+  function idbGet(key) {
+    return openDB().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction(STORE, 'readonly');
+        var rq = tx.objectStore(STORE).get(key);
+        rq.onsuccess = function () { res(rq.result); };
+        rq.onerror = function () { rej(rq.error); };
+      });
+    });
+  }
+
+  /* ---- 把字体挂到页面 ---- */
+  function mountStyle() {
+    var s = document.getElementById(STYLE_ID);
+    if (s) return s;
+    s = document.createElement('style');
+    s.id = STYLE_ID;
+    s.textContent = [
+      /* 气泡内所有文字换成用户字体 */
+      '.msg .bubble,',
+      '.msg .bubble p, .msg .bubble li, .msg .bubble h1, .msg .bubble h2,',
+      '.msg .bubble h3, .msg .bubble h4, .msg .bubble blockquote,',
+      '.msg .bubble td, .msg .bubble th, .msg .bubble a, .msg .bubble strong,',
+      '.msg .bubble em, .msg .bubble span:not(.ic) {',
+      '  font-family: "' + FAMILY + '", var(--font-sans) !important;',
+      '}',
+      /* 代码块 / 行内代码保持等宽 */
+      '.msg .bubble pre, .msg .bubble pre *,',
+      '.msg .bubble code, .msg .bubble kbd, .msg .bubble samp {',
+      '  font-family: var(--font-mono) !important;',
+      '}',
+    ].join('\n');
+    (document.head || document.documentElement).appendChild(s);
+    return s;
+  }
+
+  function unmountStyle() {
+    var s = document.getElementById(STYLE_ID);
+    if (s) s.remove();
+    try {
+      document.fonts.forEach(function (f) {
+        if (f.family === FAMILY) document.fonts.delete(f);
+      });
+    } catch (e) {}
+  }
+
+  function applyFont(rec) {
+    if (!rec || !rec.data) return Promise.resolve(false);
+    var buf = rec.data;
+    var ff;
+    try {
+      ff = new FontFace(FAMILY, buf);
+    } catch (e) {
+      return Promise.reject(e);
+    }
+    return ff.load().then(function (loaded) {
+      try {
+        document.fonts.forEach(function (f) {
+          if (f.family === FAMILY) document.fonts.delete(f);
+        });
+      } catch (e) {}
+      document.fonts.add(loaded);
+      mountStyle();
+      return true;
+    });
+  }
+
+  /* ---- UI ---- */
+  function buildUI() {
+    var body = document.querySelector('#page-settings .page-body');
+    if (!body) return false;
+    if (document.getElementById('font-field')) return true;
+
+    var sec = document.createElement('section');
+    sec.className = 'field';
+    sec.id = 'font-field';
+    sec.innerHTML = [
+      '<label>正文字体</label>',
+      '<div class="font-name" id="font-name">当前：系统默认</div>',
+      '<div class="font-btns">',
+      '  <button type="button" class="ghost" id="btn-font-pick">选择字体文件</button>',
+      '  <button type="button" class="ghost danger" id="btn-font-reset">恢复默认</button>',
+      '</div>',
+      '<input type="file" id="pick-font" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" hidden />',
+      '<p class="hint">支持 ttf / otf / woff / woff2。只改聊天气泡里的正文，代码块保持等宽。</p>',
+    ].join('\n');
+
+    /* 插到「清空当前对话」那行之前 */
+    var anchor = body.lastElementChild;
+    if (anchor && anchor.classList && anchor.classList.contains('row')) {
+      body.insertBefore(sec, anchor);
+    } else {
+      body.appendChild(sec);
+    }
+
+    var pick = sec.querySelector('#pick-font');
+    var btnPick = sec.querySelector('#btn-font-pick');
+    var btnReset = sec.querySelector('#btn-font-reset');
+    var nameEl = sec.querySelector('#font-name');
+
+    function setName(n) {
+      if (!nameEl) return;
+      if (n) {
+        nameEl.innerHTML = '当前：<b>' + String(n).replace(/[<>&]/g, '') + '</b>';
+      } else {
+        nameEl.textContent = '当前：系统默认';
+      }
+    }
+
+    btnPick.addEventListener('click', function (e) {
+      e.stopPropagation();
+      try { pick.click(); } catch (err) {
+        say('打不开文件选择器：' + ((err && err.message) || err), 4200);
+      }
+    });
+
+    pick.addEventListener('change', function () {
+      var f = pick.files && pick.files[0];
+      if (!f) return;
+      if (f.size > 20 * 1024 * 1024) {
+        say('字体文件超过 20MB，先换个小的吧', 4200);
+        return;
+      }
+      say('正在加载字体…', 2200);
+      var reader = new FileReader();
+      reader.onload = function () {
+        var buf = reader.result;
+        var rec = { name: f.name, data: buf, ts: Date.now() };
+        idbPut(KEY, rec)
+          .then(function () { return applyFont(rec); })
+          .then(function () {
+            setName(f.name);
+            say('字体已应用：' + f.name, 3600);
+          })
+          .catch(function (e2) {
+            say('字体加载失败：' + ((e2 && e2.message) || e2), 4600);
+          });
+      };
+      reader.onerror = function () {
+        say('读文件失败，换一个试试', 3600);
+      };
+      try { reader.readAsArrayBuffer(f); }
+      catch (e3) { say('这个字体格式读不了：' + ((e3 && e3.message) || e3), 4200); }
+      try { pick.value = ''; } catch (e4) {}
+    });
+
+    btnReset.addEventListener('click', function (e) {
+      e.stopPropagation();
+      idbPut(KEY, null)
+        .then(function () {
+          unmountStyle();
+          setName(null);
+          say('已恢复默认字体', 3000);
+        })
+        .catch(function () {
+          unmountStyle();
+          setName(null);
+        });
+    });
+
+    return true;
+  }
+
+  /* ---- 启动 ---- */
+  function boot() {
+    buildUI();
+    idbGet(KEY).then(function (rec) {
+      if (!rec || !rec.data) return;
+      return applyFont(rec).then(function () {
+        var nameEl = document.getElementById('font-name');
+        if (nameEl) {
+          nameEl.innerHTML = '当前：<b>' + String(rec.name || '自定义字体').replace(/[<>&]/g, '') + '</b>';
+        }
+      }).catch(function () {});
+    }).catch(function () {});
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+  setTimeout(buildUI, 600);
+  setTimeout(buildUI, 1800);
+
+  /* 每次切到设置页都确认 UI 在 */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest('#tabbar button[data-page="settings"]')) {
+      setTimeout(buildUI, 40);
+    }
+  }, true);
+})();
+
+/* ---------- 1. 搜索 ---------- */
 (function () {
   'use strict';
 
@@ -52,7 +286,6 @@
     });
   }
 
-  /* 把消息正文压成可读的一行：剥代码块 → 剥链接 → 压空白 */
   function plain(text) {
     return String(text || '')
       .replace(/```[\s\S]*?```/g, ' ')
@@ -139,7 +372,6 @@
   }
   window.__findBuild = build;
 
-  /* 用 clone 换掉输入框，清掉旧监听器，避免双触发 */
   function rebind() {
     var old = document.getElementById('find-input');
     var box = document.getElementById('find-list');
@@ -168,7 +400,6 @@
   setTimeout(rebind, 500);
   setTimeout(rebind, 1500);
 
-  /* 点放大镜打开搜索条时，确保绑定 + 聚焦 */
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (t && t.closest && t.closest('#' + BTN_ID)) {
