@@ -1,11 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   （原 card-fix + patch3~6 合并而成）
-
-   v60 修：
-     · 弹层高度改用 CSS height:fit-content（不靠 JS 算，浏览器自己收缩）
-     · fitCardSheet 改用 body.scrollHeight 量内容（不再受 sheet 拉伸影响）
-     · 版本徽章 v60
+   v61：弹层 CSS 双保险（同时写进 index.html 内联样式）
    ============================================================ */
 
 /* ============================================================
@@ -85,19 +80,22 @@
     '.msg-branch .br-n{font-variant-numeric:tabular-nums;padding:0 2px}',
     '.msg-branch .br-tag{font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:2px}',
 
-    /* ---- 角色卡详情：弹层高度 = 内容高度 ---- */
-    '#card-view{align-items:center !important;justify-content:center !important}',
+    /* ---- 角色卡详情：弹层高度 = 内容高度（v61 加强） ---- */
+    '#card-view{',
+    '  align-items:center !important;',
+    '  justify-content:center !important;',
+    '}',
     '#card-view .sheet{',
-    '  height:fit-content !important;',   /* ← 让浏览器按内容收缩 */
+    '  align-self:center !important;',
+    '  height:auto !important;',
     '  max-height:88vh !important;',
     '  min-height:0 !important;',
-    '  align-self:center !important;',   /* ← 拒绝 flex stretch */
-    '  flex:0 0 auto !important;',       /* ← 不长大、不缩小 */
-    '  display:flex !important;',
-    '  flex-direction:column !important;',
+    '  flex:0 0 auto !important;',
     '  padding-bottom:0 !important;',
     '  margin-bottom:0 !important;',
     '  overflow:hidden !important;',
+    '  display:flex !important;',
+    '  flex-direction:column !important;',
     '}',
     '#card-view .sheet-body{',
     '  flex:0 1 auto !important;',
@@ -1343,15 +1341,11 @@
 })();
 
 /* ============================================================
-   14. 角色卡详情：折叠 + 弹层高度（v60 重做）
+   14. 角色卡详情：折叠 + 弹层高度（v61 加强）
    ============================================================ */
 (function cardView() {
   'use strict';
 
-  /* ------------------------------------------------------------
-     弹层高度：直接用 body.scrollHeight 算内容高度，
-     再用行内样式把 sheet 的 height 钉死（不依赖 CSS 优先级）
-     ------------------------------------------------------------ */
   function fitCardSheet() {
     try {
       var overlay = document.getElementById('card-view');
@@ -1366,15 +1360,13 @@
       var cap = Math.round(vh * 0.88);
 
       var headH = head ? head.offsetHeight : 0;
-      var bodyH = body.scrollHeight;          /* 内容真实高度（不受拉伸影响） */
+      var bodyH = body.scrollHeight;
       var need = headH + bodyH;
 
-      /* 先清掉之前写死的东西，避免累加 */
       sheet.style.removeProperty('height');
       sheet.style.removeProperty('min-height');
       sheet.style.removeProperty('max-height');
 
-      /* 把 sheet 钉在「内容高度」，上限 88vh */
       var finalH = Math.min(need, cap);
       sheet.style.setProperty('height', finalH + 'px', 'important');
       sheet.style.setProperty('min-height', '0', 'important');
@@ -1395,7 +1387,6 @@
       body.style.setProperty('padding-bottom', '0', 'important');
       body.style.setProperty('margin-bottom', '0', 'important');
 
-      /* 最后一项的尾巴切掉 */
       var kids = body.children;
       if (kids && kids.length) {
         var last = kids[kids.length - 1];
@@ -1422,9 +1413,6 @@
   }
   window.__cardFitSoon = fitSoon;
 
-  /* ------------------------------------------------------------
-     折叠
-     ------------------------------------------------------------ */
   function enhanceCardView() {
     try {
       var body = document.getElementById('cv-body');
@@ -1582,7 +1570,7 @@
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v60';
+      el.textContent = 'v61';
     } catch (e) {}
   }
   set();
