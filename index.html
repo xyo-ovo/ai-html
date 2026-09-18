@@ -28,7 +28,6 @@ try {
 <style>
 /* ============================================================
    基础样式（原 style.v21.css 内联）
-   奶油风 · 质感精修版
    ============================================================ */
 :root{
   --bg:#FBF8F3;
@@ -102,7 +101,6 @@ input:focus,textarea:focus,select:focus{
   position:relative;z-index:10;
 }
 .brand{display:flex;align-items:center;gap:8px;min-width:0}
-.brand .logo{width:22px;height:22px;color:var(--acc);stroke-width:1.6}
 .brand .avatar{
   width:29px;height:29px;border-radius:10px;display:grid;place-items:center;
   font-size:15px;line-height:1;background:var(--bg3);flex:0 0 auto;
@@ -827,10 +825,6 @@ html[data-theme="blue"]{
   --acc:#3B6DB8; --acc-soft:rgba(59,109,184,.11);
   --grad:linear-gradient(135deg,#6B9BD8,#3B6DB8);
   --ok:#3F8F6E; --danger:#C25A5A;
-  --sh-1:0 1px 2px rgba(38,52,72,.04);
-  --sh-2:0 1px 2px rgba(38,52,72,.04),0 8px 24px -12px rgba(38,52,72,.14);
-  --sh-3:0 2px 6px rgba(38,52,72,.05),0 20px 48px -18px rgba(38,52,72,.22);
-  --sh-4:0 6px 16px rgba(38,52,72,.08),0 40px 80px -24px rgba(38,52,72,.32);
 }
 html[data-theme="blue"].dark{
   --bg:#111621; --bg2:#181E2A; --bg3:#202734; --bg4:#2A323F;
@@ -839,10 +833,6 @@ html[data-theme="blue"].dark{
   --acc:#6B9BD8; --acc-soft:rgba(107,155,216,.16);
   --grad:linear-gradient(135deg,#7FAEE4,#4E80C8);
   --ok:#5FAE85; --danger:#D97A7A;
-  --sh-1:0 1px 2px rgba(0,0,0,.3);
-  --sh-2:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5);
-  --sh-3:0 2px 6px rgba(0,0,0,.34),0 20px 48px -18px rgba(0,0,0,.6);
-  --sh-4:0 6px 16px rgba(0,0,0,.4),0 40px 80px -24px rgba(0,0,0,.7);
 }
 html[data-theme="green"]{
   --bg:#F5FAF6; --bg2:#FFFFFF; --bg3:#EAF3EC; --bg4:#DCE9DF;
@@ -851,10 +841,6 @@ html[data-theme="green"]{
   --acc:#3F7D5C; --acc-soft:rgba(63,125,92,.11);
   --grad:linear-gradient(135deg,#6FAE87,#3F7D5C);
   --ok:#3F7D5C; --danger:#BE6455;
-  --sh-1:0 1px 2px rgba(36,54,42,.04);
-  --sh-2:0 1px 2px rgba(36,54,42,.04),0 8px 24px -12px rgba(36,54,42,.14);
-  --sh-3:0 2px 6px rgba(36,54,42,.05),0 20px 48px -18px rgba(36,54,42,.22);
-  --sh-4:0 6px 16px rgba(36,54,42,.08),0 40px 80px -24px rgba(36,54,42,.32);
 }
 html[data-theme="green"].dark{
   --bg:#111813; --bg2:#18211A; --bg3:#202A22; --bg4:#2A352C;
@@ -863,10 +849,6 @@ html[data-theme="green"].dark{
   --acc:#6FAE87; --acc-soft:rgba(111,174,135,.16);
   --grad:linear-gradient(135deg,#7FBE95,#4E8E68);
   --ok:#6FAE87; --danger:#D4836F;
-  --sh-1:0 1px 2px rgba(0,0,0,.3);
-  --sh-2:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5);
-  --sh-3:0 2px 6px rgba(0,0,0,.34),0 20px 48px -18px rgba(0,0,0,.6);
-  --sh-4:0 6px 16px rgba(0,0,0,.4),0 40px 80px -24px rgba(0,0,0,.7);
 }
 html[data-theme="violet"]{
   --bg:#F9F7FD; --bg2:#FFFFFF; --bg3:#F0EBF9; --bg4:#E4DCF3;
@@ -875,10 +857,6 @@ html[data-theme="violet"]{
   --acc:#6D5AB8; --acc-soft:rgba(109,90,184,.11);
   --grad:linear-gradient(135deg,#9B8AD8,#6D5AB8);
   --ok:#4F8F72; --danger:#C05F7A;
-  --sh-1:0 1px 2px rgba(46,38,62,.04);
-  --sh-2:0 1px 2px rgba(46,38,62,.04),0 8px 24px -12px rgba(46,38,62,.14);
-  --sh-3:0 2px 6px rgba(46,38,62,.05),0 20px 48px -18px rgba(46,38,62,.22);
-  --sh-4:0 6px 16px rgba(46,38,62,.08),0 40px 80px -24px rgba(46,38,62,.32);
 }
 html[data-theme="violet"].dark{
   --bg:#15121D; --bg2:#1C1826; --bg3:#241F30; --bg4:#2F293D;
@@ -887,10 +865,6 @@ html[data-theme="violet"].dark{
   --acc:#9B8AD8; --acc-soft:rgba(155,138,216,.16);
   --grad:linear-gradient(135deg,#A99AE0,#7B68C8);
   --ok:#6FAE87; --danger:#D4839A;
-  --sh-1:0 1px 2px rgba(0,0,0,.3);
-  --sh-2:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5);
-  --sh-3:0 2px 6px rgba(0,0,0,.34),0 20px 48px -18px rgba(0,0,0,.6);
-  --sh-4:0 6px 16px rgba(0,0,0,.4),0 40px 80px -24px rgba(0,0,0,.7);
 }
 html[data-theme="rose"]{
   --bg:#FDF7F9; --bg2:#FFFFFF; --bg3:#F8EDF1; --bg4:#F0DFE6;
@@ -899,10 +873,6 @@ html[data-theme="rose"]{
   --acc:#B85C7A; --acc-soft:rgba(184,92,122,.11);
   --grad:linear-gradient(135deg,#D88BA5,#B85C7A);
   --ok:#5E8F72; --danger:#C05A5A;
-  --sh-1:0 1px 2px rgba(56,42,48,.04);
-  --sh-2:0 1px 2px rgba(56,42,48,.04),0 8px 24px -12px rgba(56,42,48,.14);
-  --sh-3:0 2px 6px rgba(56,42,48,.05),0 20px 48px -18px rgba(56,42,48,.22);
-  --sh-4:0 6px 16px rgba(56,42,48,.08),0 40px 80px -24px rgba(56,42,48,.32);
 }
 html[data-theme="rose"].dark{
   --bg:#1C1519; --bg2:#241B20; --bg3:#2D2229; --bg4:#382B33;
@@ -911,10 +881,6 @@ html[data-theme="rose"].dark{
   --acc:#D88BA5; --acc-soft:rgba(216,139,165,.16);
   --grad:linear-gradient(135deg,#E09BB3,#C46886);
   --ok:#6FAE87; --danger:#D97A7A;
-  --sh-1:0 1px 2px rgba(0,0,0,.3);
-  --sh-2:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5);
-  --sh-3:0 2px 6px rgba(0,0,0,.34),0 20px 48px -18px rgba(0,0,0,.6);
-  --sh-4:0 6px 16px rgba(0,0,0,.4),0 40px 80px -24px rgba(0,0,0,.7);
 }
 html[data-theme="coral"].dark{
   --bg:#1C1917; --bg2:#231F1C; --bg3:#2B2724; --bg4:#35302B;
@@ -923,10 +889,6 @@ html[data-theme="coral"].dark{
   --acc:#D4B08C; --acc-soft:rgba(212,176,140,.16);
   --grad:linear-gradient(135deg,#CBAC8C,#A9835F);
   --ok:#8FAE85; --danger:#D9836F;
-  --sh-1:0 1px 2px rgba(0,0,0,.3);
-  --sh-2:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5);
-  --sh-3:0 2px 6px rgba(0,0,0,.34),0 20px 48px -18px rgba(0,0,0,.6);
-  --sh-4:0 6px 16px rgba(0,0,0,.4),0 40px 80px -24px rgba(0,0,0,.7);
 }
 
 /* ============================================================
@@ -1039,6 +1001,41 @@ html[data-theme="coral"].dark{
 
 body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;inset:14px;border:2px dashed var(--acc);border-radius:26px;display:grid;place-items:center;font-size:15px;font-weight:600;color:var(--acc);background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:300;pointer-events:none}
 @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}}
+
+/* ============================================================
+   v61 硬性修复：角色卡详情弹层高度 = 内容高度
+   直接写进 index.html，不依赖 patch.js 注入
+   ============================================================ */
+#card-view{align-items:center !important;justify-content:center !important}
+#card-view .sheet{
+  align-self:center !important;
+  height:auto !important;
+  max-height:88vh !important;
+  min-height:0 !important;
+  flex:0 0 auto !important;
+  padding-bottom:0 !important;
+  margin-bottom:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  overflow:hidden !important;
+}
+#card-view .sheet-body{
+  flex:0 1 auto !important;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  padding-bottom:0 !important;
+  margin-bottom:0 !important;
+  -webkit-overflow-scrolling:touch;
+}
+#card-view .sheet-body > *:last-child,
+#card-view .cv-sec:last-child,
+#card-view .cv-sec:last-child > *:last-child,
+#card-view .cv-field:last-child,
+#card-view .cv-entry:last-child{
+  margin-bottom:0 !important;
+  padding-bottom:0 !important;
+}
 </style>
 </head>
 <body>
@@ -1087,7 +1084,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">机语工坊</span>
-    <span class="ver">v58</span>
+    <span class="ver">v61</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -1388,8 +1385,8 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v29.js?v=58"></script>
-<script src="extra.v4.js?v=58"></script>
-<script src="patch.js?v=58"></script>
+<script src="app.v29.js?v=61"></script>
+<script src="extra.v4.js?v=61"></script>
+<script src="patch.js?v=61"></script>
 </body>
 </html>
