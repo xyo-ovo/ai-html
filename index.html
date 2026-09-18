@@ -46,10 +46,10 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v21</span>
+    <span class="ver">v22</span>
   </div>
   <div class="actions">
-    <button id="btn-persona" class="icon-btn" title="AI 人设"><svg class="ic"><use href="#i-edit"/></svg></button>
+    <button id="btn-persona" class="icon-btn" title="AI 人设（当前对话）"><svg class="ic"><use href="#i-edit"/></svg></button>
   </div>
 </header>
 
@@ -102,10 +102,6 @@
       </section>
 
       <section class="field">
-        <label>系统提示词（可选）</label>
-        <textarea id="sys-prompt" rows="3" placeholder="例：你是前端工程师，每次都输出完整单文件 HTML"></textarea>
-      </section>
-      <section class="field">
         <label>外观</label>
         <div class="appearance">
           <div class="seg" id="theme-mode">
@@ -148,6 +144,7 @@
   <div class="sheet">
     <div class="sheet-head"><h2>AI 人设</h2><button class="close" data-close="persona"><svg class="ic"><use href="#i-x"/></svg></button></div>
     <div class="sheet-body">
+      <p id="pa-scope" class="hint" style="margin-top:-6px">这套人设只属于当前对话</p>
       <section class="field">
         <label>头像（一个 emoji）</label>
         <input id="pa-avatar" maxlength="4" placeholder="🎨" />
@@ -157,11 +154,11 @@
         <input id="pa-name" placeholder="AI HTML 工坊" />
       </section>
       <section class="field">
-        <label>人设 / 系统提示词</label>
-        <textarea id="pa-bio" rows="5" placeholder="例：你是资深前端工程师，说话简洁，代码永远给完整可运行的单文件 HTML……"></textarea>
+        <label>人设（这个对话的性格与规则）</label>
+        <textarea id="pa-bio" rows="6" placeholder="例：你是资深前端工程师，说话简洁直接，代码永远给完整可运行的单文件 HTML，不要用外部依赖……"></textarea>
       </section>
       <section class="field">
-        <label>开场白（新对话时的欢迎语）</label>
+        <label>开场白（这个对话空着时的欢迎语）</label>
         <textarea id="pa-greeting" rows="3" placeholder="留空则用默认文案"></textarea>
       </section>
       <div class="row between">
@@ -269,6 +266,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v19.js"></script>
+<script src="app.v22.js"></script>
 </body>
 </html>
