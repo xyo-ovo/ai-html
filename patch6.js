@@ -1,35 +1,44 @@
 /* ============================================================
-   patch6.js —— 角色卡详情：可折叠 + 弹层底部不悬空
-
-   1) #card-view 弹层：内容不满时不再撑满留白，底部留安全间距
-   2) .cv-sec（章节）可点击标题折叠；条目多（>4）默认收起
-   3) .cv-entry（世界书 / 正则条目）默认收起正文，点条目名展开
-   4) .cv-field pre（人设长字段）超过约 200 字折叠，点一下展开
-
-   全部靠 CSS + 后处理，不改 extra.v4.js 的渲染逻辑。
+   patch6.js v2 —— 角色卡详情
+   1) 章节 / 条目 / 长字段 三层折叠
+   2) 底部不留白（去掉上一版加的 padding-bottom）
+   3) 世界书 / 正则条目 → 跟全局世界书一样的「书脊」样式
+   4) 新增「允许 AI 读取角色卡」开关（默认关）
+      · 关闭：请求里不挂 read_character_card 之类的工具
+      · 开启：保留工具，但改写描述，约束它别主动扮演
    ============================================================ */
 
 (function () {
   'use strict';
 
+  var CARD_TOOL_KEY = 'aih.allowCardTool';
+
+  function cardToolAllowed() {
+    try { return localStorage.getItem(CARD_TOOL_KEY) === '1'; }
+    catch (e) { return false; }
+  }
+
   /* ============================================================
      0. 样式
      ============================================================ */
   (function injectCss() {
-    if (document.getElementById('p6-css')) return;
+    var old = document.getElementById('p6-css');
+    if (old) old.remove();
+
     var s = document.createElement('style');
     s.id = 'p6-css';
     s.textContent = [
 
-      /* ---- 1. 弹层底部不悬空 ---- */
+      /* ---- 1. 弹层：内容自适应，底部不加额外留白 ---- */
       '#card-view .sheet{max-height:88vh;display:flex;flex-direction:column}',
       '#card-view .sheet-body{',
       '  flex:0 1 auto !important;',
       '  min-height:0;',
       '  overflow-y:auto;',
-      '  padding-bottom:calc(30px + env(safe-area-inset-bottom,0px)) !important;',
+      '  padding-bottom:0 !important;',
       '  -webkit-overflow-scrolling:touch;',
       '}',
+      '#card-view .sheet-body > *:last-child{margin-bottom:0 !important}',
 
       /* ---- 2. 章节折叠 ---- */
       '.cv-sec > h3{',
@@ -56,7 +65,21 @@
       '  letter-spacing:.02em;',
       '}',
 
-      /* ---- 3. 条目（世界书 / 正则）折叠 ---- */
+      /* ---- 3. 世界书 / 正则条目：跟全局世界书一个样式 ---- */
+      '.cv-entry{',
+      '  border-radius:4px 14px 14px 4px !important;',
+      '  padding:12px 14px 12px 16px !important;',
+      '  background:var(--bg2) !important;',
+      '  border:1px solid var(--line2) !important;',
+      '  border-left:3px solid color-mix(in srgb,var(--acc) 55%,transparent) !important;',
+      '  margin-bottom:9px !important;',
+      '  transition:border-color .2s ease,background-color .2s ease !important;',
+      '}',
+      '.cv-entry:hover{',
+      '  border-color:color-mix(in srgb,var(--acc) 35%,var(--line2)) !important;',
+      '  border-left-color:var(--acc) !important;',
+      '  background:color-mix(in srgb,var(--acc) 3.5%,var(--bg2)) !important;',
+      '}',
       '.cv-entry .eh{cursor:pointer;position:relative;padding-right:18px}',
       '.cv-entry .eh::after{',
       '  content:"";position:absolute;right:2px;top:50%;',
@@ -91,12 +114,23 @@
       '  font-family:var(--font-sans);letter-spacing:.02em;',
       '}',
 
+      /* ---- 5. 角色卡读取开关 ---- */
+      '#card-tool-row{',
+      '  display:flex;align-items:center;gap:14px;',
+      '  padding:13px 15px;margin:14px 0 6px;',
+      '  border:1px solid var(--line2);border-radius:16px;',
+      '  background:var(--bg2);',
+      '}',
+      '#card-tool-row .ct-meta{flex:1 1 auto;min-width:0}',
+      '#card-tool-row .ct-name{font-size:13.5px;font-weight:600;letter-spacing:-.01em}',
+      '#card-tool-row .ct-sub{font-size:11.5px;color:var(--fg3);margin-top:3px;line-height:1.65}',
+
     ].join('\n');
     (document.head || document.documentElement).appendChild(s);
   })();
 
   /* ============================================================
-     1. 增强函数
+     1. 折叠增强
      ============================================================ */
   function enhanceCardView() {
     try {
@@ -120,7 +154,6 @@
           else h3.appendChild(badge);
         }
 
-        /* 条目多的章节默认收起（人设字段那种短的保持展开） */
         var nEntry = sec.querySelectorAll('.cv-entry').length;
         if (nEntry > 4) sec.classList.add('folded');
 
@@ -162,9 +195,6 @@
   }
   window.__cardFold = enhanceCardView;
 
-  /* ============================================================
-     2. 监听弹层内容重建
-     ============================================================ */
   (function watch() {
     function bind() {
       var body = document.getElementById('cv-body');
@@ -183,7 +213,6 @@
     setTimeout(bind, 600);
     setTimeout(bind, 2000);
 
-    /* 点角色卡列表 / 弹层内任何地方，都顺手增强一次 */
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -198,12 +227,120 @@
   })();
 
   /* ============================================================
+     2. 角色卡读取开关
+     ============================================================ */
+
+  /* ---- 工具层：按开关决定挂不挂、怎么描述 ---- */
+  (function patchTools() {
+    if (typeof buildToolsPayload !== 'function') return;
+
+    var RE_CARD = /character|card/i;
+
+    var _origBTP = buildToolsPayload;
+    var _newBTP = function () {
+      var r = _origBTP();
+      try {
+        if (!r || !Array.isArray(r.tools)) return r;
+
+        if (!cardToolAllowed()) {
+          /* 关闭：整条工具摘掉 */
+          r.tools = r.tools.filter(function (t) {
+            var n = (t && t.function && t.function.name) || '';
+            return !RE_CARD.test(n);
+          });
+          if (r.map) {
+            Object.keys(r.map).forEach(function (k) {
+              if (RE_CARD.test(k)) delete r.map[k];
+            });
+          }
+        } else {
+          /* 开启：保留，但约束行为 */
+          r.tools.forEach(function (t) {
+            var n = (t && t.function && t.function.name) || '';
+            if (!RE_CARD.test(n)) return;
+            t.function.description =
+              '读取角色卡的内容。**只有当用户明确要求「读一下角色卡」「看看这张卡的设定」时才调用**；' +
+              '不要主动调用，也不要因为读到了内容就开始扮演、不要改变你原本的身份和说话方式。';
+          });
+        }
+      } catch (e) {}
+      return r;
+    };
+
+    try { buildToolsPayload = _newBTP; } catch (e) {}
+    try { window.buildToolsPayload = _newBTP; } catch (e) {}
+  })();
+
+  /* ---- 界面层：角色卡页加一个开关 ---- */
+  function buildCardToolUI() {
+    try {
+      var body = document.querySelector('#page-card .page-body');
+      if (!body) return false;
+      if (document.getElementById('card-tool-row')) return true;
+
+      var row = document.createElement('div');
+      row.id = 'card-tool-row';
+      row.innerHTML = [
+        '<div class="ct-meta">',
+        '  <div class="ct-name">允许 AI 读取角色卡</div>',
+        '  <div class="ct-sub" id="ct-sub">关闭时 AI 看不到角色卡，也不会自己开始扮演</div>',
+        '</div>',
+        '<button type="button" class="ti-toggle" id="ct-btn" title="开启 / 关闭"></button>',
+      ].join('\n');
+
+      var anchor = body.querySelector('.hint');
+      if (anchor) body.insertBefore(row, anchor);
+      else body.appendChild(row);
+
+      var btn = row.querySelector('#ct-btn');
+      var sub = row.querySelector('#ct-sub');
+
+      function sync() {
+        var on = cardToolAllowed();
+        btn.classList.toggle('on', on);
+        sub.textContent = on
+          ? '开启中：AI 可按需读取角色卡（已约束它别主动扮演）'
+          : '关闭时 AI 看不到角色卡，也不会自己开始扮演';
+      }
+      sync();
+
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var next = !cardToolAllowed();
+        try { localStorage.setItem(CARD_TOOL_KEY, next ? '1' : '0'); } catch (err) {}
+        sync();
+        try {
+          if (typeof toast === 'function') {
+            toast(next
+              ? '已允许 AI 读取角色卡（下次发消息生效）'
+              : '已关闭角色卡读取，AI 不会再自己扮演');
+          }
+        } catch (err) {}
+      });
+
+      return true;
+    } catch (e) { return false; }
+  }
+  window.__cardToolUI = buildCardToolUI;
+
+  buildCardToolUI();
+  setTimeout(buildCardToolUI, 600);
+  setTimeout(buildCardToolUI, 1800);
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest('#tabbar button[data-page="card"]')) {
+      setTimeout(buildCardToolUI, 60);
+    }
+  }, true);
+
+  /* ============================================================
      3. 版本
      ============================================================ */
   (function bumpVer() {
     try {
       var v = document.querySelector('.ver');
-      if (v) v.textContent = 'v53';
+      if (v) v.textContent = 'v54';
     } catch (e) {}
   })();
 
