@@ -1,17 +1,15 @@
 /* ============================================================
-   sw.js —— Service Worker（网络优先 + HTML 不缓存）
+   sw.js —— Service Worker（网络优先 + HTML/JS/CSS 都不缓存）
 
-   关键修正：
-   上一版的 fetch(req) 默认还是会走浏览器自己的 HTTP 缓存，
-   等于网络优先了个寂寞——拿回来的还是旧的 index.html。
+   上一版只让 HTML 走 no-store，JS/CSS 还是吃浏览器 HTTP 缓存
+   （GitHub Pages 给所有静态文件加了 max-age=600），
+   所以改完 JS 刷新也拿不到新的 —— 这就是「只能清缓存」的根因。
 
-   这版对「HTML 导航请求」加 cache:'no-store'，
-   强制绕过 HTTP 缓存，确保每次拿到的都是最新的 index.html。
-   其他静态资源（js/css/图片）仍然走默认缓存 + SW 缓存兜底，
-   不会每次都重新下载。
+   这版把 HTML / JS / CSS 全部走 cache:'no-store'，
+   每次刷新都强制回源。图片等其它资源照常缓存。
    ============================================================ */
 
-const CACHE = 'jiyu-runtime-v2';
+const CACHE = 'jiyu-runtime-v3';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -42,15 +40,21 @@ self.addEventListener('fetch', (event) => {
   /* 跳过带 Range 的请求 */
   if (req.headers.get('range')) return;
 
-  /* 是不是「打开页面」这类请求 */
-  const isHTML = req.mode === 'navigate' ||
-    ((req.headers.get('accept') || '').indexOf('text/html') >= 0);
+  const accept = req.headers.get('accept') || '';
+  const isHTML = req.mode === 'navigate' || accept.indexOf('text/html') >= 0;
+
+  /* JS / CSS 也要强制回源：靠路径后缀判断 */
+  const path = url.pathname.toLowerCase();
+  const isCode = isHTML ||
+    path.endsWith('.js') || path.endsWith('.mjs') ||
+    path.endsWith('.css') ||
+    path.endsWith('.json');
 
   event.respondWith(
-    fetch(req, isHTML ? { cache: 'no-store' } : {})
+    fetch(req, isCode ? { cache: 'no-store' } : {})
       .then((res) => {
-        /* HTML 不进 SW 缓存，永远拿网络最新 */
-        if (!isHTML && res && res.status === 200 && res.type === 'basic') {
+        /* 只有「非代码类」资源才进 SW 缓存（图片、字体等） */
+        if (!isCode && res && res.status === 200 && res.type === 'basic') {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
         }
@@ -69,7 +73,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-/* 页面可以主动要求立刻接管 */
 self.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') self.skipWaiting();
 });
