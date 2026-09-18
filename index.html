@@ -15,13 +15,20 @@
   .perm-meta{flex:1 1 auto;min-width:0}
   .perm-name{font-size:14px;font-weight:600;letter-spacing:-.01em}
   .perm-sub{font-size:12px;color:var(--fg3);margin-top:3px;line-height:1.65}
+
+  /* 预览：整层可滚动，HTML 按内容高度自适应，工具栏吸顶 */
+  #preview{display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain}
+  #preview .preview-bar{position:sticky;top:0;z-index:3}
+  #pv-frame{
+    flex:0 0 auto;width:100%;min-height:340px;border:none;background:#fff;display:block;
+  }
   #pv-code{
-    flex:1 1 auto;margin:0;overflow:auto;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+    flex:0 0 auto;margin:0;overflow:visible;padding:22px 20px calc(26px + env(safe-area-inset-bottom));
     font-family:var(--font-mono);font-size:13px;line-height:1.75;
     color:var(--fg);background:var(--bg2);
     white-space:pre-wrap;word-break:break-word;
-    -webkit-overflow-scrolling:touch;
   }
+
   /* 附件预览条 */
   .attach-bar{max-width:680px;margin:0 auto 9px;animation:msgIn .24s cubic-bezier(.16,1,.3,1) both}
   .attach-list{display:flex;gap:9px;flex-wrap:wrap}
@@ -48,6 +55,26 @@
   }
   .att-x:hover{opacity:1}
   .att-x:active{transform:scale(.88)}
+
+  /* ＋ 菜单 */
+  .composer-inner{position:relative}
+  .attach-menu{
+    position:absolute;bottom:calc(100% + 10px);left:0;
+    min-width:158px;padding:6px;z-index:30;
+    background:var(--bg2);border:1px solid var(--line2);border-radius:16px;
+    box-shadow:var(--sh-3);
+    display:flex;flex-direction:column;gap:2px;
+    animation:pop .2s cubic-bezier(.16,1,.3,1) both;
+  }
+  .attach-menu button{
+    display:flex;align-items:center;gap:10px;
+    padding:11px 14px;border-radius:12px;
+    font-size:13.5px;font-weight:500;color:var(--fg);text-align:left;white-space:nowrap;
+    transition:background-color .16s ease;
+  }
+  .attach-menu button:hover{background:var(--bg3)}
+  .attach-menu .ic{width:17px;height:17px;color:var(--acc);flex:0 0 auto}
+
   /* 消息里的附件 */
   .att-view{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:9px}
   .att-view:last-child{margin-bottom:0}
@@ -64,6 +91,7 @@
   .att-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .att-text{white-space:pre-wrap;word-break:break-word}
   .msg.user .bubble.bare{background:none;box-shadow:none;padding:0;border-radius:0;max-width:100%}
+
   /* 拖拽遮罩 */
   body.dragging::after{
     content:"松开即可添加图片 / 文件";
@@ -73,6 +101,7 @@
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
     z-index:300;pointer-events:none;
   }
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}}
 </style>
 </head>
 <body>
@@ -115,7 +144,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v27</span>
+    <span class="ver">v28</span>
   </div>
   <div class="actions">
     <button id="btn-persona" class="icon-btn" title="AI 人设（当前对话）"><svg class="ic"><use href="#i-edit"/></svg></button>
@@ -136,13 +165,18 @@
         <div id="attach-list" class="attach-list"></div>
       </div>
       <div class="composer-inner">
-        <button id="btn-attach" class="tool-btn" title="添加图片 / 文件"><svg class="ic"><use href="#i-paperclip"/></svg></button>
+        <button id="btn-attach" class="tool-btn" title="添加"><svg class="ic"><use href="#i-plus"/></svg></button>
+        <div id="attach-menu" class="attach-menu hidden">
+          <button type="button" data-kind="file"><svg class="ic"><use href="#i-file"/></svg>上传文件</button>
+          <button type="button" data-kind="image"><svg class="ic"><use href="#i-image"/></svg>上传图片</button>
+        </div>
         <textarea id="input" rows="1" placeholder="说点什么，或让它写点东西…"></textarea>
         <button id="btn-stop" class="stop-btn hidden" title="停止生成"><svg class="ic"><use href="#i-stop"/></svg></button>
         <button id="btn-send" title="发送"><svg class="ic"><use href="#i-send"/></svg></button>
       </div>
     </footer>
     <input type="file" id="pick-file" multiple hidden />
+    <input type="file" id="pick-image" accept="image/*" multiple hidden />
   </section>
 
   <section id="page-files" class="page">
@@ -363,6 +397,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v27.js"></script>
+<script src="app.v28.js"></script>
 </body>
 </html>
