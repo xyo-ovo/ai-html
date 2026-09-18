@@ -1,28 +1,34 @@
 /* ============================================================
-   patch3.js v6
+   patch3.js v7
    1) 搜索重做（结果列表点选）
    2) 修竖排（覆盖 .find-bar button 误伤 .find-row）
    3) 正文字体上传（存 IndexedDB，FontFace 加载，只作用正文）
    4) 分支对话（重新生成时保留旧版本，左右箭头切换）
    5) 应用改名 → 机语工坊
-   6) 动态加载 patch4.js（公式 / 图表 / 引用 / 气泡 / 进度条 / AI 标题）
+   6) 动态加载 patch4.js（公式 / 图表 / 引用 / 气泡 / 上下文环 / AI 标题）
+      与 patch5.js（输入区对齐 + 列表视觉语言）
 
    —— 本文件在 app.v29.js / extra.v4.js / card-fix.js 之后加载，
       它们顶层的 function 声明都可以安全覆盖。
    ============================================================ */
 
-/* ---------- -1. 尽早把 patch4.js 拉起来 ---------- */
-(function loadPatch4() {
-  try {
-    if (document.querySelector('script[src="patch4.js"]')) return;
-    var s = document.createElement('script');
-    s.src = 'patch4.js';
-    s.async = false;
-    s.onerror = function () {
-      try { console.warn('[patch3] patch4.js 加载失败（网络？）'); } catch (e) {}
-    };
-    (document.head || document.documentElement).appendChild(s);
-  } catch (e) {}
+/* ---------- -1. 尽早把后续补丁拉起来 ---------- */
+(function loadPatches() {
+  var list = ['patch4.js', 'patch5.js'];
+  for (var i = 0; i < list.length; i++) {
+    (function (src) {
+      try {
+        if (document.querySelector('script[src="' + src + '"]')) return;
+        var s = document.createElement('script');
+        s.src = src;
+        s.async = false;
+        s.onerror = function () {
+          try { console.warn('[patch3] ' + src + ' 加载失败（网络？）'); } catch (e) {}
+        };
+        (document.head || document.documentElement).appendChild(s);
+      } catch (e) {}
+    })(list[i]);
+  }
 })();
 
 /* ---------- 0. 注入覆盖样式 ---------- */
@@ -92,7 +98,7 @@
 (function bumpVer() {
   try {
     var v = document.querySelector('.ver');
-    if (v) v.textContent = 'v50';
+    if (v) v.textContent = 'v52';
   } catch (e) {}
 })();
 
