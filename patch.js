@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v72：联网搜索 —— 系统提示声明 + 设置页状态诊断
+   v73：联网搜索开关改为独立 localStorage 存储（不再被「保存人设」抹掉）
    ============================================================ */
 
 /* ============================================================
@@ -68,6 +68,10 @@
     '#websearch-field .ws-status b{color:var(--fg)}',
     '#websearch-field .ws-status .ok{color:var(--ok)}',
     '#websearch-field .ws-status .warn{color:var(--danger)}',
+    '#websearch-field .ws-toggle-row{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:12px;background:var(--bg3);border:1px solid var(--line2)}',
+    '#websearch-field .ws-toggle-row .ws-tg-meta{flex:1 1 auto;min-width:0}',
+    '#websearch-field .ws-toggle-row .ws-tg-name{font-size:13.5px;font-weight:600}',
+    '#websearch-field .ws-toggle-row .ws-tg-sub{font-size:11.5px;color:var(--fg3);margin-top:3px;line-height:1.6}',
 
     /* ---- 搜索 ---- */
     '.find-bar{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);z-index:30}',
@@ -1506,12 +1510,14 @@
 
 /* ============================================================
    17. 网页搜索（Tavily，不走 MCP）
+   —— 开关存独立 localStorage（v73 修：不再被保存人设抹掉）
    ============================================================ */
 (function webSearchFeature() {
   'use strict';
 
   var K_KEY = 'aih.websearch.key';
   var K_PROXY = 'aih.websearch.proxy';
+  var K_ON = 'aih.websearch.enabled';
   var API = 'https://api.tavily.com/search';
   var MARK = '【联网搜索】';
 
@@ -1520,6 +1526,35 @@
   }
   function getKey() { try { return (localStorage.getItem(K_KEY) || '').trim(); } catch (e) { return ''; } }
   function getProxy() { try { return (localStorage.getItem(K_PROXY) || '').trim(); } catch (e) { return ''; } }
+
+  /* ---------- 开关状态：独立存储，最稳 ---------- */
+  function isWebSearchOn() {
+    try {
+      var v = localStorage.getItem(K_ON);
+      if (v === '1') return true;
+      if (v === '0') return false;
+    } catch (e) {}
+    /* 老数据兼容：读一下 persona */
+    try {
+      var s = (typeof currentSession === 'function') ? currentSession() : null;
+      var p = (s && s.persona) || (typeof LS !== 'undefined' && LS.persona) || {};
+      if (p.allowWebSearch) {
+        try { localStorage.setItem(K_ON, '1'); } catch (e0) {}
+        return true;
+      }
+    } catch (e2) {}
+    return false;
+  }
+  function setWebSearchOn(on) {
+    on = !!on;
+    try { localStorage.setItem(K_ON, on ? '1' : '0'); } catch (e) {}
+    /* 顺便同步到 persona，保持兼容 */
+    try {
+      if (typeof setPersonaFlag === 'function') setPersonaFlag('allowWebSearch', on);
+    } catch (e2) {}
+  }
+  window.__wsIsOn = isWebSearchOn;
+  window.__wsSetOn = setWebSearchOn;
 
   /* ---------- 真正干活的请求 ---------- */
   async function searchRaw(args, key, proxy) {
@@ -1603,13 +1638,8 @@
     var _origSP = sessionPersona;
     var _newSP = function () {
       var p = _origSP();
-      try {
-        var s = (typeof currentSession === 'function') ? currentSession() : null;
-        var raw = (s && s.persona) || (typeof LS !== 'undefined' && LS.persona) || {};
-        p.allowWebSearch = !!raw.allowWebSearch;
-      } catch (e) {
-        try { p.allowWebSearch = false; } catch (e2) {}
-      }
+      try { p.allowWebSearch = isWebSearchOn(); }
+      catch (e) { try { p.allowWebSearch = false; } catch (e2) {} }
       return p;
     };
     _newSP.__wsPatched = true;
@@ -1617,26 +1647,30 @@
     try { window.sessionPersona = _newSP; } catch (e) {}
   }
 
-  /* ---------- savePersona 补字段 ---------- */
+  /* ---------- 保存人设后：刷新 UI（值不会丢，因为存 localStorage） ---------- */
   if (typeof savePersona === 'function' && !savePersona.__wsPatched) {
     var _origSave = savePersona;
     var _newSave = function () {
-      var flag = false;
-      try { flag = !!sessionPersona().allowWebSearch; } catch (e) {}
-      _origSave();
-      try {
-        var s = (typeof currentSession === 'function') ? currentSession() : null;
-        if (s && s.persona) {
-          s.persona.allowWebSearch = flag;
-          if (typeof LS !== 'undefined') LS.sessions = sessions;
-        }
-      } catch (e2) {}
+      try { _origSave(); } catch (e) { throw e; }
       syncToggle();
       updateStatus();
     };
     _newSave.__wsPatched = true;
     try { savePersona = _newSave; } catch (e) {}
     try { window.savePersona = _newSave; } catch (e) {}
+  }
+
+  /* ---------- 恢复默认后：也刷新 UI ---------- */
+  if (typeof resetPersona === 'function' && !resetPersona.__wsPatched) {
+    var _origReset = resetPersona;
+    var _newReset = function () {
+      try { _origReset(); } catch (e) { throw e; }
+      syncToggle();
+      updateStatus();
+    };
+    _newReset.__wsPatched = true;
+    try { resetPersona = _newReset; } catch (e) {}
+    try { window.resetPersona = _newReset; } catch (e) {}
   }
 
   /* ---------- openPersona 同步开关 ---------- */
@@ -1658,9 +1692,7 @@
       var r = _origBTP();
       try {
         if (!r || !Array.isArray(r.tools) || !r.map) return r;
-        var allow = false;
-        try { allow = !!sessionPersona().allowWebSearch; } catch (e) {}
-        if (!allow) return r;
+        if (!isWebSearchOn()) return r;
         if (r.tools.some(function (t) { return t && t.function && t.function.name === 'web_search'; })) return r;
         r.map['web_search'] = { builtin: 'websearch', toolName: 'web_search' };
         r.tools.push({
@@ -1692,9 +1724,7 @@
     var _newBSP = function () {
       var s = _origBSP();
       if (typeof s !== 'string') return s;
-      var allow = false;
-      try { allow = !!sessionPersona().allowWebSearch; } catch (e) {}
-      if (!allow) return s;
+      if (!isWebSearchOn()) return s;
       if (s.indexOf(MARK) >= 0) return s;
       return s + [
         '',
@@ -1722,16 +1752,14 @@
     try {
       var btn = document.getElementById('pa-websearch');
       if (!btn) return;
-      var on = false;
-      try { on = !!sessionPersona().allowWebSearch; } catch (e) {}
-      btn.classList.toggle('on', on);
+      btn.classList.toggle('on', isWebSearchOn());
     } catch (e) {}
   }
 
   function injectPermRow() {
     var host = document.querySelector('#persona .perm-row');
     if (!host || !host.parentNode) return false;
-    if (document.getElementById('pa-websearch')) return true;
+    if (document.getElementById('pa-websearch')) { syncToggle(); return true; }
 
     var row = document.createElement('div');
     row.className = 'perm-row';
@@ -1752,21 +1780,8 @@
     var btn = t.closest('#pa-websearch');
     if (!btn) return;
     e.stopPropagation();
-    var cur = false;
-    try { cur = !!sessionPersona().allowWebSearch; } catch (err) {}
-    var next = !cur;
-    if (typeof setPersonaFlag === 'function') {
-      setPersonaFlag('allowWebSearch', next);
-    } else {
-      try {
-        var s = currentSession();
-        if (s) {
-          if (!s.persona) s.persona = {};
-          s.persona.allowWebSearch = next;
-          LS.sessions = sessions;
-        }
-      } catch (err2) {}
-    }
+    var next = !isWebSearchOn();
+    setWebSearchOn(next);
     btn.classList.toggle('on', next);
     say(next ? '已开启联网搜索' : '已关闭联网搜索');
     updateStatus();
@@ -1776,13 +1791,26 @@
   setTimeout(injectPermRow, 300);
   setTimeout(injectPermRow, 1200);
 
+  /* ---------- 修复「保存」按钮绑定（原版绑定的是旧函数） ---------- */
+  function rebindSave() {
+    try {
+      var b = document.getElementById('pa-save');
+      if (b && b.dataset.wsRebound !== '1') {
+        b.dataset.wsRebound = '1';
+        b.onclick = savePersona;
+      }
+    } catch (e) {}
+  }
+  rebindSave();
+  setTimeout(rebindSave, 300);
+  setTimeout(rebindSave, 1200);
+
   /* ---------- 设置页配置块 ---------- */
   function updateStatus() {
     try {
       var el = document.getElementById('ws-status');
       if (!el) return;
-      var on = false;
-      try { on = !!sessionPersona().allowWebSearch; } catch (e) {}
+      var on = isWebSearchOn();
       var names = [];
       try {
         if (typeof buildToolsPayload === 'function') {
@@ -1807,13 +1835,20 @@
   function buildSearchUI() {
     var body = document.querySelector('#page-settings .page-body');
     if (!body) return false;
-    if (document.getElementById('websearch-field')) { updateStatus(); return true; }
+    if (document.getElementById('websearch-field')) { syncToggle(); updateStatus(); return true; }
 
     var sec = document.createElement('section');
     sec.className = 'field';
     sec.id = 'websearch-field';
     sec.innerHTML = [
       '<label>网页搜索 <span class="ws-badge">Tavily</span></label>',
+      '<div class="ws-toggle-row">',
+      '  <div class="ws-tg-meta">',
+      '    <div class="ws-tg-name">开启联网搜索</div>',
+      '    <div class="ws-tg-sub">打开后 AI 才会拿到搜索工具；这个开关独立保存，不会被人设覆盖</div>',
+      '  </div>',
+      '  <button type="button" id="ws-toggle" class="ti-toggle" title="开启 / 关闭"></button>',
+      '</div>',
       '<div class="ws-inputs">',
       '  <input id="ws-key" type="password" placeholder="Tavily API Key，形如 tvly-…" />',
       '  <input id="ws-proxy" placeholder="可选：CORS 代理前缀（直连报跨域时再填）" />',
@@ -1838,8 +1873,20 @@
 
     var keyEl = sec.querySelector('#ws-key');
     var proxyEl = sec.querySelector('#ws-proxy');
+    var tgEl = sec.querySelector('#ws-toggle');
     keyEl.value = getKey();
     proxyEl.value = getProxy();
+    tgEl.classList.toggle('on', isWebSearchOn());
+
+    tgEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var next = !isWebSearchOn();
+      setWebSearchOn(next);
+      tgEl.classList.toggle('on', next);
+      syncToggle();
+      say(next ? '已开启联网搜索' : '已关闭联网搜索');
+      updateStatus();
+    });
 
     keyEl.addEventListener('change', function () {
       try { localStorage.setItem(K_KEY, keyEl.value.trim()); } catch (e) {}
@@ -1900,7 +1947,7 @@
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v72';
+      el.textContent = 'v73';
     } catch (e) {}
   }
   set();
