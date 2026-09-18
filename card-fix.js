@@ -1,11 +1,10 @@
 /* ============================================================
-   card-fix.js v3 —— 安卓可用版
-   关键修复：绝对不要 preventDefault！
-   安卓浏览器要求 .click() 必须发生在"未被 preventDefault 的用户手势"里，
-   之前 v2 在捕获阶段先 preventDefault 再 click()，安卓直接拒绝打开文件框。
-
-   现在主方案已改为「input 透明铺满按钮区域」（见 index.html），
-   本脚本只做兜底 + 提供导入入口。
+   card-fix.js v4 —— 安卓 Chrome 兼容版
+   关键原则（安卓 Chrome 只认这一种）：
+     · 必须是 <button>（不是 label / div）
+     · input 用「视觉隐藏」而非 display:none / opacity:0
+     · 绑定时绝不 preventDefault / stopPropagation
+     · 必须在点击的同步执行栈里直接 input.click()
    ============================================================ */
 
 (function () {
@@ -15,7 +14,7 @@
     return document.getElementById('pick-card');
   }
 
-  /* 导入入口（内联 onchange 会调它） */
+  /* 导入入口（input 的内联 onchange 会调它） */
   function doImport(files) {
     if (!files || !files.length) return;
     var fn = window.importCardFile || (typeof importCardFile === 'function' ? importCardFile : null);
@@ -35,20 +34,18 @@
   }
   window.__cardFixImport = doImport;
 
-  /* 兜底：只在「事件目标不是 input 自己」时才手动 click
-     并且绝对不 preventDefault —— 让浏览器认为这是有效的用户手势 */
+  /* 绑定：只做一件事 —— 同步 pick.click()，不拦任何事件 */
   function bind() {
-    var wrap = document.getElementById('btn-import-card');
+    var btn = document.getElementById('btn-import-card');
     var p = pickEl();
-    if (!wrap || !p) return false;
-    if (wrap.dataset.cfBound === '1') return true;
-    wrap.dataset.cfBound = '1';
+    if (!btn || !p) return false;
+    if (btn.dataset.cfBound === '1') return true;
+    btn.dataset.cfBound = '1';
 
-    wrap.addEventListener('click', function (ev) {
-      /* 用户已经直接点到 input 了，浏览器会自己处理，不用管 */
-      if (ev.target === p) return;
+    btn.addEventListener('click', function () {
+      /* 不要 preventDefault，不要 stopPropagation
+         安卓 Chrome 会因为「手势被取消」而拒绝打开文件框 */
       try { p.click(); } catch (e) {}
-      /* 注意：这里没有 preventDefault */
     });
     return true;
   }
@@ -58,11 +55,11 @@
   setTimeout(bind, 400);
   setTimeout(bind, 1500);
 
-  /* 切到角色卡页时补绑一次 */
+  /* 切到角色卡页时补一次 */
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (t && t.closest && t.closest('#tabbar button[data-page="card"]')) {
-      setTimeout(bind, 30);
+      setTimeout(bind, 40);
     }
   }, true);
 })();
