@@ -1,8 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v68：清掉角色卡详情相关的干扰 CSS
-   —— 把 #card-view 完全交给 index.html 的 CSS（跟编辑人设弹层同组规则）
-   —— 不再单独设 align-items / height / max-height / flex，让它跟人设完全一致
+   v69：角色卡详情加顶部分类标签（人设 / 世界书 / 正则）
    ============================================================ */
 
 /* ============================================================
@@ -86,6 +84,17 @@
     '.composer-inner{display:flex;align-items:center !important}',
     '.composer-inner > button,.composer-inner > .tool-btn{align-self:center !important;flex:0 0 auto;margin-top:0 !important;margin-bottom:0 !important}',
     '.composer-inner > textarea{align-self:center !important}',
+
+    /* ---- 角色卡详情：顶部分类标签 ---- */
+    '#cv-body .cv-tabs{display:flex;gap:4px;padding:4px;background:var(--bg3);border-radius:15px;margin-bottom:18px}',
+    '#cv-body .cv-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 6px;border-radius:12px;font-size:13.5px;font-weight:500;color:var(--fg2);background:none;border:none;cursor:pointer;transition:background-color .2s ease,color .2s ease,box-shadow .2s ease,transform .12s ease}',
+    '#cv-body .cv-tab:hover{color:var(--fg)}',
+    '#cv-body .cv-tab:active{transform:scale(.97)}',
+    '#cv-body .cv-tab.on{background:var(--bg2);color:var(--fg);font-weight:600;box-shadow:0 2px 6px -2px rgba(58,52,46,.18)}',
+    '#cv-body .cv-tab .cv-tab-n{font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:999px;background:var(--bg4);color:var(--fg3);line-height:1.5}',
+    '#cv-body .cv-tab.on .cv-tab-n{background:var(--acc-soft);color:var(--acc)}',
+    '#cv-body .cv-tab.is-empty{opacity:.38;cursor:default}',
+    '#cv-body .cv-tab.is-empty:hover{color:var(--fg2)}',
 
     /* ---- 列表视觉 ---- */
     '#card-list .card-item{position:relative;border-radius:20px !important;padding:16px 40px 16px 18px !important;background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 7%,var(--bg2)) 0%,var(--bg2) 58%) !important;border:1px solid color-mix(in srgb,var(--acc) 20%,var(--line2)) !important;transition:transform .22s cubic-bezier(.16,1,.3,1),box-shadow .24s ease,border-color .2s ease !important}',
@@ -1293,8 +1302,131 @@
 })();
 
 /* ============================================================
-   14. 角色卡详情（v67 起整段删除，v68 不再有任何 CSS 干预）
+   14. 角色卡详情：顶部分类标签（人设 / 世界书 / 正则）
+   —— 只切显示，不动渲染；底部的删除/复制按钮永远可见
    ============================================================ */
+(function cardTabs() {
+  'use strict';
+
+  var TABS = [
+    { key: 'profile', label: '人设' },
+    { key: 'book',    label: '世界书' },
+    { key: 'regex',   label: '正则' },
+  ];
+  var cur = 'profile';
+
+  function classify(sec) {
+    var h3 = sec.querySelector('h3');
+    var t = h3 ? String(h3.textContent || '') : '';
+    if (t.indexOf('世界书') >= 0) return 'book';
+    if (t.indexOf('正则') >= 0) return 'regex';
+    return 'profile';
+  }
+
+  function applyTab(body) {
+    var secs = body.querySelectorAll('.cv-sec');
+    Array.prototype.forEach.call(secs, function (sec) {
+      sec.style.display = (sec.dataset.cvTab === cur) ? '' : 'none';
+    });
+  }
+
+  function highlight(bar) {
+    Array.prototype.forEach.call(bar.querySelectorAll('.cv-tab'), function (b) {
+      b.classList.toggle('on', b.dataset.tab === cur);
+    });
+  }
+
+  function build(body) {
+    var secs = body.querySelectorAll('.cv-sec');
+    if (!secs.length) return;
+
+    /* 统计每类有多少 */
+    var counts = { profile: 0, book: 0, regex: 0 };
+    Array.prototype.forEach.call(secs, function (sec) {
+      var k = classify(sec);
+      sec.dataset.cvTab = k;
+      counts[k]++;
+    });
+
+    /* 当前 tab 没内容 → 自动跳到第一个有内容的 */
+    if (!counts[cur]) {
+      for (var i = 0; i < TABS.length; i++) {
+        if (counts[TABS[i].key]) { cur = TABS[i].key; break; }
+      }
+    }
+
+    /* 标签栏（存在就复用） */
+    var bar = body.querySelector('.cv-tabs');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'cv-tabs';
+      body.insertBefore(bar, body.firstChild);
+    }
+    bar.innerHTML = '';
+    TABS.forEach(function (t) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.tab = t.key;
+      b.className = 'cv-tab' + (t.key === cur ? ' on' : '') + (counts[t.key] ? '' : ' is-empty');
+      b.innerHTML = t.label + (counts[t.key] ? '<span class="cv-tab-n">' + counts[t.key] + '</span>' : '');
+      b.onclick = function (e) {
+        e.stopPropagation();
+        if (!counts[t.key]) return;
+        cur = t.key;
+        applyTab(body);
+        highlight(bar);
+        try {
+          var sb = body.closest('.sheet-body') || body;
+          sb.scrollTop = 0;
+        } catch (err) {}
+      };
+      bar.appendChild(b);
+    });
+
+    applyTab(body);
+    highlight(bar);
+  }
+
+  function enhance() {
+    try {
+      var body = document.getElementById('cv-body');
+      if (!body) return;
+      if (!body.querySelector('.cv-sec')) return;
+      build(body);
+    } catch (e) {}
+  }
+  window.__cardTabs = enhance;
+
+  /* 内容重建时重新分类 */
+  (function watch() {
+    function bind() {
+      var body = document.getElementById('cv-body');
+      if (!body || body.dataset.cvTabsWatch === '1') return;
+      body.dataset.cvTabsWatch = '1';
+      if (typeof MutationObserver === 'undefined') return;
+      var tmr = 0;
+      var mo = new MutationObserver(function () {
+        if (tmr) return;
+        tmr = setTimeout(function () { tmr = 0; enhance(); }, 40);
+      });
+      try { mo.observe(body, { childList: true, subtree: false }); } catch (e) {}
+    }
+    bind();
+    setTimeout(bind, 600);
+    setTimeout(bind, 2000);
+    enhance();
+  })();
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('#card-list')) {
+      cur = 'profile';
+      setTimeout(enhance, 60);
+      setTimeout(enhance, 260);
+    }
+  }, true);
+})();
 
 /* ============================================================
    15. 角色卡工具描述软化
@@ -1333,7 +1465,7 @@
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v68';
+      el.textContent = 'v69';
     } catch (e) {}
   }
   set();
