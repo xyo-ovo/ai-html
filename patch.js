@@ -2,27 +2,10 @@
    patch.js —— 所有补丁合并版
    （原 card-fix + patch3~6 合并而成）
 
-   模块顺序（后面的会包装前面的，别乱动）：
-     1  样式总注入
-     2  角色卡本地存储补丁（LS.cards）
-     3  角色卡导入修复
-     4  改名 → 机语工坊
-     5  正文字体上传
-     6  搜索（结果列表点选）
-     7  分支对话
-     8  公式渲染 KaTeX
-     9  图表渲染 Mermaid
-    10  引用回复
-    11  气泡自定义
-    12  上下文指示环
-    13  AI 自动起标题
-    14  角色卡详情折叠 + 弹层高度
-    15  角色卡工具描述软化
-    16  版本徽章
-
-   v59 修：角色卡弹层被 flex stretch 拉满
-     · .sheet 补 align-self:center + flex:0 1 auto（关键）
-     · fitCardSheet 改成「先松开、量自然高度、超了才限」
+   v60 修：
+     · 弹层高度改用 CSS height:fit-content（不靠 JS 算，浏览器自己收缩）
+     · fitCardSheet 改用 body.scrollHeight 量内容（不再受 sheet 拉伸影响）
+     · 版本徽章 v60
    ============================================================ */
 
 /* ============================================================
@@ -102,18 +85,19 @@
     '.msg-branch .br-n{font-variant-numeric:tabular-nums;padding:0 2px}',
     '.msg-branch .br-tag{font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:2px}',
 
-    /* ---- 角色卡详情：弹层不再被拉伸 ---- */
+    /* ---- 角色卡详情：弹层高度 = 内容高度 ---- */
     '#card-view{align-items:center !important;justify-content:center !important}',
     '#card-view .sheet{',
-    '  height:auto !important;',
-    '  min-height:0 !important;',
+    '  height:fit-content !important;',   /* ← 让浏览器按内容收缩 */
     '  max-height:88vh !important;',
-    '  align-self:center !important;',   /* ← 关键：钉住自己，拒绝 flex stretch */
-    '  flex:0 1 auto !important;',       /* ← 不长大、可缩小 */
+    '  min-height:0 !important;',
+    '  align-self:center !important;',   /* ← 拒绝 flex stretch */
+    '  flex:0 0 auto !important;',       /* ← 不长大、不缩小 */
     '  display:flex !important;',
     '  flex-direction:column !important;',
     '  padding-bottom:0 !important;',
     '  margin-bottom:0 !important;',
+    '  overflow:hidden !important;',
     '}',
     '#card-view .sheet-body{',
     '  flex:0 1 auto !important;',
@@ -1359,13 +1343,14 @@
 })();
 
 /* ============================================================
-   14. 角色卡详情：折叠 + 弹层高度（v59 重做）
+   14. 角色卡详情：折叠 + 弹层高度（v60 重做）
    ============================================================ */
 (function cardView() {
   'use strict';
 
   /* ------------------------------------------------------------
-     弹层高度：先全部松开 → 让浏览器按内容算 → 超了才限高
+     弹层高度：直接用 body.scrollHeight 算内容高度，
+     再用行内样式把 sheet 的 height 钉死（不依赖 CSS 优先级）
      ------------------------------------------------------------ */
   function fitCardSheet() {
     try {
@@ -1377,37 +1362,40 @@
       if (!sheet || !body) return;
       var head = sheet.querySelector('.sheet-head');
 
-      /* ① 松开一切高度限制，并钉住自己不被拉伸 */
-      sheet.style.setProperty('height', 'auto', 'important');
+      var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+      var cap = Math.round(vh * 0.88);
+
+      var headH = head ? head.offsetHeight : 0;
+      var bodyH = body.scrollHeight;          /* 内容真实高度（不受拉伸影响） */
+      var need = headH + bodyH;
+
+      /* 先清掉之前写死的东西，避免累加 */
+      sheet.style.removeProperty('height');
+      sheet.style.removeProperty('min-height');
+      sheet.style.removeProperty('max-height');
+
+      /* 把 sheet 钉在「内容高度」，上限 88vh */
+      var finalH = Math.min(need, cap);
+      sheet.style.setProperty('height', finalH + 'px', 'important');
       sheet.style.setProperty('min-height', '0', 'important');
-      sheet.style.setProperty('max-height', 'none', 'important');
+      sheet.style.setProperty('max-height', cap + 'px', 'important');
       sheet.style.setProperty('align-self', 'center', 'important');
-      sheet.style.setProperty('flex', '0 1 auto', 'important');
+      sheet.style.setProperty('flex', '0 0 auto', 'important');
       sheet.style.setProperty('padding-bottom', '0', 'important');
       sheet.style.setProperty('margin-bottom', '0', 'important');
 
-      body.style.setProperty('height', 'auto', 'important');
-      body.style.setProperty('min-height', '0', 'important');
-      body.style.setProperty('max-height', 'none', 'important');
-      body.style.setProperty('flex', '0 1 auto', 'important');
-      body.style.setProperty('padding-bottom', '0', 'important');
-      body.style.setProperty('margin-bottom', '0', 'important');
-      body.style.setProperty('overflow-y', 'visible', 'important');
-
-      /* ② 量自然高度 */
-      var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-      var cap = Math.round(vh * 0.88);
-      var natural = Math.ceil(sheet.getBoundingClientRect().height);
-
-      /* ③ 只有超了才限高，没超就保持贴住内容 */
-      if (natural > cap) {
-        var headH = head ? head.offsetHeight : 0;
-        sheet.style.setProperty('max-height', cap + 'px', 'important');
+      if (need > cap) {
         body.style.setProperty('max-height', Math.max(0, cap - headH) + 'px', 'important');
         body.style.setProperty('overflow-y', 'auto', 'important');
+      } else {
+        body.style.setProperty('max-height', 'none', 'important');
+        body.style.setProperty('overflow-y', 'visible', 'important');
       }
+      body.style.setProperty('min-height', '0', 'important');
+      body.style.setProperty('padding-bottom', '0', 'important');
+      body.style.setProperty('margin-bottom', '0', 'important');
 
-      /* ④ 把最后一项的尾巴切掉 */
+      /* 最后一项的尾巴切掉 */
       var kids = body.children;
       if (kids && kids.length) {
         var last = kids[kids.length - 1];
@@ -1442,7 +1430,6 @@
       var body = document.getElementById('cv-body');
       if (!body) return;
 
-      /* ---- 章节 ---- */
       var secs = body.querySelectorAll('.cv-sec');
       Array.prototype.forEach.call(secs, function (sec) {
         var h3 = sec.querySelector('h3');
@@ -1466,7 +1453,6 @@
         });
       });
 
-      /* ---- 条目正文 ---- */
       var entries = body.querySelectorAll('.cv-entry');
       Array.prototype.forEach.call(entries, function (en) {
         if (en.dataset.p6 === '1') return;
@@ -1482,7 +1468,6 @@
         });
       });
 
-      /* ---- 长字段 ---- */
       var pres = body.querySelectorAll('.cv-field pre');
       Array.prototype.forEach.call(pres, function (pre) {
         if (pre.dataset.p6 === '1') return;
@@ -1517,7 +1502,6 @@
     setTimeout(bind, 600);
     setTimeout(bind, 2000);
 
-    /* 点角色卡列表项 → 打开弹层，密集重测 */
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -1535,7 +1519,6 @@
 
     window.addEventListener('resize', function () { setTimeout(fitCardSheet, 80); }, { passive: true });
 
-    /* 关闭弹层时清掉写死的样式，下次打开重新量 */
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -1599,7 +1582,7 @@
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v59';
+      el.textContent = 'v60';
     } catch (e) {}
   }
   set();
