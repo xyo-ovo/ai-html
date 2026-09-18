@@ -3,9 +3,24 @@
    1) 修 + 按钮 / 发送按钮的垂直对齐（居中）
    2) 列表去"千篇一律"：角色卡 / 供应商 / MCP / 世界书 / 文件库
       各自有独立的视觉语言
+   3) 顺带把 patch6.js（角色卡详情折叠）拉起来
 
    纯 CSS 覆盖 + 少量 JS 钩子，不改动任何渲染函数。
    ============================================================ */
+
+/* ---------- -1. 尽早把 patch6.js 拉起来 ---------- */
+(function loadPatch6() {
+  try {
+    if (document.querySelector('script[src="patch6.js"]')) return;
+    var s = document.createElement('script');
+    s.src = 'patch6.js';
+    s.async = false;
+    s.onerror = function () {
+      try { console.warn('[patch5] patch6.js 加载失败（网络？）'); } catch (e) {}
+    };
+    (document.head || document.documentElement).appendChild(s);
+  } catch (e) {}
+})();
 
 (function () {
   'use strict';
@@ -229,7 +244,7 @@
   (function bumpVer() {
     try {
       var v = document.querySelector('.ver');
-      if (v) v.textContent = 'v52';
+      if (v) v.textContent = 'v53';
     } catch (e) {}
   })();
 
