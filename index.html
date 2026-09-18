@@ -7,7 +7,7 @@
 <title>AI HTML 工坊</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23c96442'/%3E%3Ccircle cx='9' cy='9.5' r='1.7' fill='%23fff'/%3E%3Ccircle cx='14.6' cy='8.6' r='1.7' fill='%23fff'/%3E%3Ccircle cx='10' cy='14.6' r='1.7' fill='%23fff'/%3E%3C/svg%3E" />
 <script>try{var t=localStorage.getItem('aih.themeMode')||localStorage.getItem('aih.theme');if(t!=='light'&&t!=='dark'&&t!=='auto')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}</script>
-<link rel="stylesheet" href="style.v8.css" />
+<link rel="stylesheet" href="style.v9.css" />
 </head>
 <body>
 
@@ -42,7 +42,7 @@
   <div class="brand">
     <svg class="ic logo"><use href="#i-palette"/></svg>
     <span>AI HTML 工坊</span>
-    <span class="ver">v8</span>
+    <span class="ver">v9</span>
   </div>
   <div class="actions">
     <button id="btn-theme" class="icon-btn" title="切换主题"><svg class="ic"><use href="#i-moon"/></svg></button>
@@ -62,7 +62,6 @@
   </div>
 </footer>
 
-<!-- 全屏预览 -->
 <div id="preview" class="overlay hidden">
   <div class="preview-bar">
     <span id="pv-name" class="pv-name"></span>
@@ -75,7 +74,6 @@
   <iframe id="pv-frame" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-same-origin"></iframe>
 </div>
 
-<!-- 设置 -->
 <div id="settings" class="overlay hidden">
   <div class="sheet">
     <div class="sheet-head"><h2>设置</h2><button class="close" data-close="settings"><svg class="ic"><use href="#i-x"/></svg></button></div>
@@ -107,7 +105,6 @@
   </div>
 </div>
 
-<!-- 工具 -->
 <div id="tools" class="overlay hidden">
   <div class="sheet">
     <div class="sheet-head"><h2>工具</h2><button class="close" data-close="tools"><svg class="ic"><use href="#i-x"/></svg></button></div>
@@ -119,14 +116,17 @@
   </div>
 </div>
 
-<!-- 工具编辑 -->
 <div id="tool-edit" class="overlay hidden">
   <div class="sheet">
     <div class="sheet-head"><h2 id="te-title">添加 MCP 服务器</h2><button class="close" data-close="tool-edit"><svg class="ic"><use href="#i-x"/></svg></button></div>
     <div class="sheet-body">
       <section class="field"><label>名称</label><input id="te-name" placeholder="例如：天气工具" /></section>
       <section class="field"><label>服务器地址（HTTP）</label><input id="te-url" placeholder="https://example.com/mcp" /></section>
-      <section class="field"><label>请求头（JSON，可选）</label><textarea id="te-headers" rows="3" placeholder='{"Authorization":"Bearer xxx"}'></textarea></section>
+      <section class="field">
+        <label>请求头</label>
+        <div id="te-headers-list" class="hdr-list"></div>
+        <button id="btn-add-header" class="ghost"><svg class="ic"><use href="#i-plus"/></svg>添加请求头</button>
+      </section>
       <section class="field"><label>工具列表</label><div id="te-tools" class="te-tools"></div></section>
       <div class="row between">
         <button id="te-delete" class="ghost danger" hidden>删除</button>
@@ -139,7 +139,6 @@
   </div>
 </div>
 
-<!-- 文件库 -->
 <div id="files" class="overlay hidden">
   <div class="sheet">
     <div class="sheet-head"><h2>文件库</h2><button class="close" data-close="files"><svg class="ic"><use href="#i-x"/></svg></button></div>
@@ -147,7 +146,6 @@
   </div>
 </div>
 
-<!-- 供应商编辑 -->
 <div id="provider-edit" class="overlay hidden">
   <div class="sheet">
     <div class="sheet-head"><h2 id="pe-title">添加供应商</h2><button class="close" data-close="provider-edit"><svg class="ic"><use href="#i-x"/></svg></button></div>
@@ -186,6 +184,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v8.js"></script>
+<script src="app.v9.js"></script>
 </body>
 </html>
