@@ -1,20 +1,24 @@
 /* ============================================================
-   patch4.js —— 机语工坊 增强包
-   1) 公式渲染（KaTeX，$...$ 和 $$...$$）
-   2) 图表渲染（Mermaid，```mermaid 代码块变成图）
-   3) 引用回复（消息操作区多一个 💬，引用块自动拼进发送内容）
-   4) 气泡自定义（宽度 / 圆角，设置页可调）
-   5) 上下文进度条（顶栏底部一根细线，估算 token 占用）
-   6) AI 自动起标题（第一条对话完成后调一次模型起名）
+   patch4.js v2 —— 机语工坊 增强包
+   1) 公式渲染（KaTeX）
+   2) 图表渲染（Mermaid）
+   3) 引用回复（按钮 + 引用块 + 拼接发送）
+   4) 气泡自定义（宽度 / 圆角）
+   5) 上下文指示（改成 + 按钮外面的一圈细环，上限 1M）
+   6) AI 自动起标题
 
-   本文件由 patch3.js 动态加载，加载时机在 app.v29.js 之后。
+   v2 改动：
+   · CTX_LIMIT 64000 → 1000000（1M）
+   · 进度条从顶栏挪到 + 按钮上（环形），顶栏那根停用
+   · 引用按钮改成全量补丁（MutationObserver + 主动扫描），
+     旧消息也会补上，不再只对新消息生效
    ============================================================ */
 
 (function () {
   'use strict';
 
   /* ============================================================
-     0. 样式注入
+     0. 样式
      ============================================================ */
   (function injectCss() {
     if (document.getElementById('p4-css')) return;
@@ -34,7 +38,7 @@
       '.mermaid-bar button{font-size:11.5px;padding:4px 11px;border-radius:9px;border:1px solid var(--line2);background:var(--bg2);color:var(--fg2);cursor:pointer;transition:border-color .15s ease,color .15s ease}',
       '.mermaid-bar button:hover{border-color:var(--acc);color:var(--acc)}',
 
-      /* ---- 引用块（消息里显示） ---- */
+      /* ---- 引用块 ---- */
       '.quote-box{border-left:3px solid var(--acc);padding:7px 11px;margin-bottom:9px;background:var(--bg3);border-radius:9px;font-size:12.5px;color:var(--fg2);max-height:96px;overflow:hidden}',
       '.quote-box .qb-who{font-size:11px;color:var(--acc);margin-bottom:3px;font-weight:600}',
       '.quote-box .qb-txt{white-space:pre-wrap;word-break:break-word;line-height:1.6}',
@@ -42,25 +46,30 @@
       '.msg.user .quote-box .qb-who{color:rgba(255,255,255,.85)}',
       '.msg.user .quote-box .qb-txt{color:rgba(255,255,255,.92)}',
 
-      /* ---- 输入框上方的"引用中"提示 ---- */
+      /* ---- 引用提示条 ---- */
       '#quote-bar{display:flex;align-items:center;gap:8px;max-width:680px;margin:0 auto 9px;padding:9px 13px;border-radius:14px;background:var(--bg3);border:1px solid var(--line2);font-size:12.5px;color:var(--fg2);animation:msgIn .2s cubic-bezier(.16,1,.3,1) both}',
       '#quote-bar .qb-tag{font-size:11px;color:var(--acc);font-weight:600;flex:0 0 auto}',
       '#quote-bar .qb-pre{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.75}',
       '#quote-bar .qb-x{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:none;background:var(--fg);color:var(--bg);cursor:pointer;font-size:13px;line-height:1;display:grid;place-items:center;opacity:.7}',
       '#quote-bar .qb-x:hover{opacity:1}',
 
-      /* ---- 上下文进度条 ---- */
-      '#topbar{position:relative}',
-      '#ctx-bar{position:absolute;left:0;right:0;bottom:0;height:2.5px;background:rgba(128,128,128,.12);z-index:6;pointer-events:auto}',
-      '#ctx-bar .ctx-fill{height:100%;width:0;background:var(--acc);transition:width .35s cubic-bezier(.16,1,.3,1),background-color .35s ease;border-radius:0 2px 2px 0}',
-      '#ctx-bar .ctx-fill.warn{background:#DBA23F}',
-      '#ctx-bar .ctx-fill.danger{background:#CE5B5B}',
+      /* ---- 顶栏那根旧的停用 ---- */
+      '#ctx-bar{display:none !important}',
+
+      /* ---- 上下文环：套在 + 按钮外面 ---- */
+      '#btn-attach{position:relative !important;overflow:visible !important}',
+      '#ctx-ring{position:absolute;inset:-3px;border-radius:15px;padding:2.5px;pointer-events:none;opacity:0;transition:opacity .25s ease;background:transparent;',
+      '  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);',
+      '  -webkit-mask-composite:xor;',
+      '  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);',
+      '  mask-composite:exclude}',
+      '#ctx-ring.on{opacity:1}',
 
       /* ---- 气泡自定义 ---- */
       '.msg > .bubble{max-width:min(var(--bubble-max,680px),92%) !important;border-radius:var(--bubble-radius,20px) !important}',
       '.msg-body{max-width:min(var(--bubble-max,680px),92%) !important}',
 
-      /* ---- 设置页里的滑杆 ---- */
+      /* ---- 设置页滑杆 ---- */
       '#bubble-field .bs-row{display:flex;align-items:center;gap:12px;padding:9px 0}',
       '#bubble-field .bs-lb{flex:0 0 44px;font-size:12.5px;color:var(--fg2)}',
       '#bubble-field input[type=range]{flex:1 1 auto;accent-color:var(--acc);height:22px}',
@@ -79,7 +88,7 @@
   }
 
   /* ============================================================
-     1. 懒加载外部库
+     1. 懒加载
      ============================================================ */
   var _loading = {};
   function loadJS(src) {
@@ -109,7 +118,7 @@
   }
 
   /* ============================================================
-     2. 公式渲染（KaTeX）
+     2. 公式（KaTeX）
      ============================================================ */
   var KATEX_CSS = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
   var KATEX_JS = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
@@ -122,7 +131,7 @@
       katexReady = typeof window.renderMathInElement === 'function';
       if (katexReady) renderAllMath();
     })
-    .catch(function () { /* CDN 挂了就算了，公式原样显示 */ });
+    .catch(function () {});
 
   function renderMath(el) {
     if (!katexReady || typeof window.renderMathInElement !== 'function') return;
@@ -165,7 +174,7 @@
   }
 
   /* ============================================================
-     3. 图表渲染（Mermaid）
+     3. 图表（Mermaid）
      ============================================================ */
   var MERMAID_JS = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js';
   var mermaidReady = false;
@@ -209,8 +218,7 @@
       }
 
       if (!mermaidReady) {
-        try { await loadJS(MERMAID_JS); initMermaid(); }
-        catch (e) {}
+        try { await loadJS(MERMAID_JS); initMermaid(); } catch (e) {}
       }
       if (!mermaidReady && !initMermaid()) {
         d.innerHTML = '<div class="mermaid-err">画图组件没加载出来（检查网络）</div>';
@@ -408,7 +416,6 @@
     if (!m) return;
     var text = typeof m.content === 'string' ? m.content : '';
     if (!text.trim()) {
-      /* 没有正文就退而取第一个文本 part */
       var parts = m.parts || [];
       for (var i = 0; i < parts.length; i++) {
         if (parts[i].type === 'text' && parts[i].text) { text = parts[i].text; break; }
@@ -422,19 +429,36 @@
   }
   window.__quoteFrom = quoteFrom;
 
-  /* 点引用按钮 → 记录下来 */
+  /* 给所有消息操作区补一个引用按钮（含旧消息） */
+  function patchQuoteButtons() {
+    try {
+      var acts = document.querySelectorAll('#messages .msg-actions');
+      Array.prototype.forEach.call(acts, function (box) {
+        if (box.querySelector('[data-act="quote"]')) return;
+        var b = document.createElement('button');
+        b.dataset.act = 'quote';
+        b.title = '引用这条';
+        b.innerHTML = '<svg class="ic"><use href="#i-chat"/></svg>';
+        box.insertBefore(b, box.firstChild);
+      });
+    } catch (e) {}
+  }
+  window.__patchQuoteButtons = patchQuoteButtons;
+
+  /* 捕获阶段：点引用按钮 */
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (!t || !t.closest) return;
     var btn = t.closest('.msg-actions button[data-act="quote"]');
     if (!btn) return;
     e.stopPropagation();
+    e.preventDefault();
     var el = btn.closest('.msg');
     if (!el || el.dataset.idx === undefined) return;
     quoteFrom(Number(el.dataset.idx));
   }, true);
 
-  /* 包装 renderMsg：补按钮 + 渲染引用块 */
+  /* 渲染新消息时补按钮 + 画引用块 */
   if (typeof renderMsg === 'function') {
     var _prevRenderMsg = renderMsg;
     var _newRenderMsg2 = function (msg, idx) {
@@ -442,7 +466,6 @@
       try {
         if (!el || !msg) return el;
 
-        /* 引用按钮 */
         var acts = el.querySelector('.msg-actions');
         if (acts && !acts.querySelector('[data-act="quote"]')) {
           var b = document.createElement('button');
@@ -452,7 +475,6 @@
           acts.insertBefore(b, acts.firstChild);
         }
 
-        /* 消息上挂着的引用块 */
         if (msg.quote && msg.quote.text) {
           var bub = el.querySelector('.bubble');
           if (bub && !bub.querySelector('.quote-box')) {
@@ -476,7 +498,25 @@
     try { window.renderMsg = _newRenderMsg2; } catch (e) {}
   }
 
-  /* 包装 buildUserContent：把引用拼进去，让模型也看得到 */
+  /* 监听消息区变化，自动补引用按钮 */
+  (function watchMsgs() {
+    var box = document.getElementById('messages');
+    if (!box || typeof MutationObserver === 'undefined') return;
+    var tmr = 0;
+    var mo = new MutationObserver(function () {
+      if (tmr) return;
+      tmr = setTimeout(function () {
+        tmr = 0;
+        patchQuoteButtons();
+      }, 120);
+    });
+    try { mo.observe(box, { childList: true, subtree: true }); } catch (e) {}
+    patchQuoteButtons();
+    setTimeout(patchQuoteButtons, 300);
+    setTimeout(patchQuoteButtons, 1200);
+  })();
+
+  /* 发送时把引用拼进内容（让模型也看得到） */
   if (typeof buildUserContent === 'function') {
     var _prevBUC = buildUserContent;
     var _newBUC = function (m) {
@@ -500,8 +540,7 @@
     try { window.buildUserContent = _newBUC; } catch (e) {}
   }
 
-  /* 包装 send：发之前先把引用挂到即将新建的那条消息上。
-     做法：临时劫持 messages.push 一次，把 quote 塞进去。 */
+  /* 包装 send：把 quote 挂到即将新建的那条 user 消息上 */
   if (typeof send === 'function') {
     var _origSend = send;
     var _newSend = async function () {
@@ -512,7 +551,6 @@
       var arr = (typeof messages !== 'undefined' && messages) ? messages : null;
       if (!arr) return _origSend();
 
-      /* 一次性拦截：下一条被 push 的 user 消息带上 quote */
       var origPush = arr.push;
       var patched = function () {
         try {
@@ -528,21 +566,17 @@
       pendingQuote = null;
       renderQuoteBar();
 
-      try {
-        var r = await _origSend();
-        return r;
-      } finally {
-        if (arr.push === patched) arr.push = origPush;
-      }
+      try { return await _origSend(); }
+      finally { if (arr.push === patched) arr.push = origPush; }
     };
     try { send = _newSend; } catch (e) {}
     try { window.send = _newSend; } catch (e) {}
   }
 
   /* ============================================================
-     6. 上下文进度条
+     6. 上下文指示（+ 按钮外圈细环）
      ============================================================ */
-  var CTX_LIMIT = 64000;
+  var CTX_LIMIT = 1000000;
 
   function estimateTokens() {
     var n = 0;
@@ -562,34 +596,49 @@
     return Math.round(n / 2.8);
   }
 
-  function ensureCtxBar() {
-    var tb = document.getElementById('topbar');
-    if (!tb) return null;
-    var bar = document.getElementById('ctx-bar');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.id = 'ctx-bar';
-      bar.innerHTML = '<div class="ctx-fill"></div>';
-      tb.appendChild(bar);
+  function ensureRing() {
+    var btn = document.getElementById('btn-attach');
+    if (!btn) return null;
+    var ring = document.getElementById('ctx-ring');
+    if (!ring) {
+      ring = document.createElement('span');
+      ring.id = 'ctx-ring';
+      try { btn.appendChild(ring); } catch (e) { return null; }
     }
-    return bar;
+    return ring;
   }
 
   function updateCtxBar() {
     try {
-      var bar = ensureCtxBar();
-      if (!bar) return;
-      var fill = bar.querySelector('.ctx-fill');
-      if (!fill) return;
+      var btn = document.getElementById('btn-attach');
+      var ring = ensureRing();
+      if (!ring || !btn) return;
+
       var t = estimateTokens();
       var pct = Math.min(100, (t / CTX_LIMIT) * 100);
-      fill.style.width = pct + '%';
-      fill.classList.toggle('warn', pct >= 55 && pct < 82);
-      fill.classList.toggle('danger', pct >= 82);
-      bar.title = '上下文约 ' + t.toLocaleString('en-US') + ' tokens（估算 · 上限按 ' + (CTX_LIMIT / 1000) + 'k 算）';
+
+      var color = '#CE5B5B';
+      if (pct < 55) color = 'var(--acc)';
+      else if (pct < 82) color = '#DBA23F';
+
+      var deg = Math.max(0, Math.min(360, pct * 3.6));
+      ring.style.background = 'conic-gradient(' + color + ' ' + deg + 'deg, transparent ' + deg + 'deg)';
+      ring.classList.toggle('on', pct > 1.5);
+
+      /* 数字改成百分比 + 万单位，1M 上限下更直观 */
+      var shown;
+      if (t >= 10000) shown = (t / 10000).toFixed(1).replace(/\.0$/, '') + ' 万';
+      else shown = t.toLocaleString('en-US');
+      btn.title = '添加附件 · 上下文约 ' + shown + ' tokens（' + pct.toFixed(1) + '% / 1M）';
     } catch (e) {}
   }
   window.__ctxUpdate = updateCtxBar;
+
+  /* 旧的顶栏进度条（如果之前建过）清掉 */
+  try {
+    var oldBar = document.getElementById('ctx-bar');
+    if (oldBar && oldBar.parentNode) oldBar.parentNode.removeChild(oldBar);
+  } catch (e) {}
 
   if (typeof renderMessages === 'function') {
     var _prevRM = renderMessages;
@@ -601,9 +650,9 @@
     try { window.renderMessages = _newRM; } catch (e) {}
   }
 
-  ensureCtxBar();
   updateCtxBar();
-  setTimeout(updateCtxBar, 500);
+  setTimeout(updateCtxBar, 300);
+  setTimeout(updateCtxBar, 1200);
 
   /* ============================================================
      7. AI 自动起标题
@@ -615,8 +664,8 @@
     var s = null;
     try { s = (typeof currentSession === 'function') ? currentSession() : null; } catch (e) {}
     if (!s) return;
-    if (s.titled) return;          /* 用户手动改过名，不动 */
-    if (s.autoTitled) return;      /* 已经自动起过 */
+    if (s.titled) return;
+    if (s.autoTitled) return;
 
     var arr = (typeof messages !== 'undefined' && messages) ? messages : [];
     if (arr.length < 2) return;
@@ -669,7 +718,7 @@
         if (typeof renderConvList === 'function') renderConvList(search ? search.value : '');
       } catch (e) {}
     } catch (e) {
-      /* 静默失败，别打扰用户 */
+      /* 静默 */
     } finally {
       titling = false;
     }
@@ -681,6 +730,7 @@
     var _newRA = async function () {
       var r = await _prevRA();
       try { updateCtxBar(); } catch (e) {}
+      try { patchQuoteButtons(); } catch (e) {}
       setTimeout(function () { maybeAutoTitle(); }, 350);
       return r;
     };
@@ -689,12 +739,12 @@
   }
 
   /* ============================================================
-     8. 版本徽章
+     8. 版本
      ============================================================ */
   (function bumpVer() {
     try {
       var v = document.querySelector('.ver');
-      if (v) v.textContent = 'v50';
+      if (v) v.textContent = 'v51';
     } catch (e) {}
   })();
 
