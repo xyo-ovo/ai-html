@@ -30,13 +30,34 @@
   .tk-k{color:#E2A87C}
   .tk-p{color:#A79C90}
 
-  .find-bar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);animation:msgIn .22s cubic-bezier(.16,1,.3,1) both}
+  /* 搜索 */
+  .find-bar{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);animation:msgIn .22s cubic-bezier(.16,1,.3,1) both;z-index:25}
   .find-bar input{flex:1 1 auto;padding:9px 13px;border-radius:12px;font-size:14px;background:var(--bg3);border-color:transparent}
   .find-bar input:focus{background:var(--bg3);border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
-  .find-count{font-size:12px;color:var(--fg3);font-variant-numeric:tabular-nums;flex:0 0 auto;min-width:3.2em;text-align:right}
+  .find-count{font-size:12px;color:var(--fg3);font-variant-numeric:tabular-nums;flex:0 0 auto;min-width:3.4em;text-align:right}
   .find-bar button{width:32px;height:32px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;color:var(--fg2);font-size:14px;line-height:1;transition:background-color .15s ease,color .15s ease}
   .find-bar button:hover{background:var(--bg3);color:var(--fg)}
-  .msg.find-hit{background:var(--acc-soft);border-radius:16px;padding:10px 12px}
+
+  .find-list{
+    position:absolute;left:12px;right:12px;top:calc(100% + 6px);
+    max-height:52vh;overflow-y:auto;
+    background:var(--bg2);border:1px solid var(--line2);border-radius:16px;
+    box-shadow:var(--sh-3);padding:6px;
+    display:flex;flex-direction:column;gap:2px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .find-row{
+    display:flex;align-items:flex-start;gap:9px;padding:9px 11px;border-radius:11px;
+    text-align:left;font-size:12.5px;color:var(--fg);width:100%;background:none;border:none;cursor:pointer;
+    transition:background-color .14s ease;
+  }
+  .find-row:hover{background:var(--bg3)}
+  .find-row .fr-n{flex:0 0 auto;width:1.7em;color:var(--fg3);font-variant-numeric:tabular-nums;font-size:11.5px;padding-top:1px;text-align:right}
+  .find-row .fr-role{flex:0 0 auto;font-size:10.5px;padding:1.5px 7px;border-radius:999px;background:var(--bg4);color:var(--fg2);line-height:1.4}
+  .find-row .fr-role.u{background:var(--acc-soft);color:var(--acc)}
+  .find-row .fr-txt{flex:1 1 auto;min-width:0;line-height:1.6;word-break:break-word;color:var(--fg2)}
+  .find-empty{padding:16px;text-align:center;color:var(--fg3);font-size:12.5px}
+
   .msg.find-cur{background:var(--acc-soft);border-radius:16px;padding:10px 12px;box-shadow:inset 0 0 0 2px var(--acc)}
 
   .attach-bar{max-width:680px;margin:0 auto 9px;animation:msgIn .24s cubic-bezier(.16,1,.3,1) both}
@@ -101,6 +122,18 @@
 
   #card-diag{font-size:11px;color:var(--fg3);font-family:var(--font-mono);line-height:1.6;word-break:break-all;opacity:.8}
 
+  /* 用 label 当按钮：浏览器原生触发，绝不失效 */
+  label.ghost{
+    display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+    border:1.5px solid var(--line2);border-radius:16px;padding:12px 18px;
+    font-size:14px;font-weight:500;color:var(--fg2);
+    transition:border-color .18s ease,color .18s ease,background-color .18s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  label.ghost:hover{border-color:var(--acc);color:var(--acc);background:var(--acc-soft)}
+  label.ghost:active{transform:scale(.98)}
+  label.ghost .ic{width:16px;height:16px}
+
   body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;inset:14px;border:2px dashed var(--acc);border-radius:26px;display:grid;place-items:center;font-size:15px;font-weight:600;color:var(--acc);background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:300;pointer-events:none}
   @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}}
 </style>
@@ -151,7 +184,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v36</span>
+    <span class="ver">v37</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -163,11 +196,10 @@
 
   <section id="page-chat" class="page active">
     <div id="find-bar" class="find-bar hidden">
-      <input id="find-input" placeholder="在对话中搜索…" />
-      <span id="find-count" class="find-count">0/0</span>
-      <button id="find-prev" title="上一个">↑</button>
-      <button id="find-next" title="下一个">↓</button>
+      <input id="find-input" placeholder="输入关键词，下方列出匹配消息…" />
+      <span id="find-count" class="find-count">0 条</span>
       <button id="find-close" title="关闭">✕</button>
+      <div id="find-list" class="find-list hidden"></div>
     </div>
     <div id="chat"><div id="messages"></div></div>
     <footer id="composer">
@@ -208,15 +240,20 @@
     <div class="page-head"><h2>角色卡</h2></div>
     <div class="page-body">
       <div id="card-list"></div>
-      <button id="btn-import-card" class="ghost" onclick="try{document.getElementById('pick-card').click()}catch(e){}"><svg class="ic"><use href="#i-upload"/></svg>导入角色卡（PNG / JSON）</button>
+
+      <label class="ghost" for="pick-card">
+        <svg class="ic"><use href="#i-upload"/></svg>导入角色卡（PNG / JSON）
+      </label>
+
       <p class="hint">导入后只存在这张卡里，<b>不会动你的全局世界书</b>。卡里的世界书、正则都能在这里查看和开关；需要时可以把某张卡的世界书复制成 ST 格式，或手动导入全局。</p>
       <p id="card-diag">诊断加载中…</p>
     </div>
+
     <input type="file" id="pick-card"
       accept=".png,.json,image/png,application/json"
       multiple
       onchange="try{if(window.__cardFixImport)window.__cardFixImport(this.files)}catch(e){}"
-      style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none" />
+      style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);border:0;padding:0;margin:-1px" />
   </section>
 
   <section id="page-lore" class="page">
@@ -444,5 +481,6 @@
 <script src="app.v29.js"></script>
 <script src="extra.v4.js"></script>
 <script src="card-fix.js"></script>
+<script src="patch2.js"></script>
 </body>
 </html>
