@@ -22,6 +22,10 @@
   #pv-frame{
     flex:0 0 auto;width:100%;min-height:340px;border:none;background:#fff;display:block;
   }
+  #pv-image{
+    flex:0 0 auto;max-width:100%;display:block;margin:0 auto;
+    padding:20px;background:var(--bg2);
+  }
   #pv-code{
     flex:0 0 auto;margin:0;overflow:visible;padding:22px 20px calc(26px + env(safe-area-inset-bottom));
     font-family:var(--font-mono);font-size:13px;line-height:1.75;
@@ -86,11 +90,29 @@
     display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:12px;
     background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.3);
     font-size:12.5px;max-width:230px;cursor:pointer;
+    color:#FFFDFA;
   }
   .att-chip .ic{width:14px;height:14px;flex:0 0 auto}
   .att-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .att-text{white-space:pre-wrap;word-break:break-word}
+  /* 只带附件（无文字）时：气泡透明，chip 换回主题色 */
   .msg.user .bubble.bare{background:none;box-shadow:none;padding:0;border-radius:0;max-width:100%}
+  .msg.user .bubble.bare .att-chip{
+    background:var(--bg3);border-color:var(--line2);color:var(--fg);
+  }
+  .msg.user .bubble.bare .att-chip:hover{border-color:var(--acc);color:var(--acc)}
+
+  /* 文件卡片上的「存入文件库」按钮 */
+  .fc-save{
+    flex:0 0 auto;width:32px;height:32px;border-radius:11px;
+    display:grid;place-items:center;color:var(--fg3);
+    border:1px solid var(--line2);background:var(--bg2);
+    transition:color .16s ease,border-color .16s ease,background-color .16s ease,transform .12s ease;
+  }
+  .fc-save:hover{color:var(--acc);border-color:var(--acc)}
+  .fc-save.on{color:#FFFDFA;background:var(--acc);border-color:var(--acc)}
+  .fc-save:active{transform:scale(.86)}
+  .fc-save .ic{width:15px;height:15px}
 
   /* 拖拽遮罩 */
   body.dragging::after{
@@ -136,6 +158,9 @@
 <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.67 3.67 0 0 1 5.19 5.19l-9.2 9.19a1.83 1.83 0 0 1-2.59-2.59l8.49-8.49"/></symbol>
 <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6.8A1.8 1.8 0 0 0 5 3.8v16.4A1.8 1.8 0 0 0 6.8 22h10.4a1.8 1.8 0 0 0 1.8-1.8V7z"/><path d="M14 2v5h5"/></symbol>
 <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.7" cy="8.7" r="1.8"/><path d="m21 15-5-5L5 21"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v3.5A1.5 1.5 0 0 1 19.5 20h-15A1.5 1.5 0 0 1 3 18.5V15"/><path d="m7 8 5-5 5 5"/><path d="M12 3v13"/></symbol>
 </defs>
 </svg>
 
@@ -144,7 +169,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v28</span>
+    <span class="ver">v29</span>
   </div>
   <div class="actions">
     <button id="btn-persona" class="icon-btn" title="AI 人设（当前对话）"><svg class="ic"><use href="#i-edit"/></svg></button>
@@ -181,7 +206,12 @@
 
   <section id="page-files" class="page">
     <div class="page-head"><h2>文件库</h2></div>
-    <div id="file-list" class="page-body"></div>
+    <div class="page-body">
+      <div id="file-list" class="file-list-wrap"></div>
+      <button id="btn-import-file" class="ghost"><svg class="ic"><use href="#i-upload"/></svg>导入文件</button>
+      <p class="hint">AI 生成的文件不会自动进库。在对话里点文件卡片右侧的「存入」按钮才会收录到这里。</p>
+    </div>
+    <input type="file" id="pick-import" multiple hidden />
   </section>
 
   <section id="page-lore" class="page">
@@ -332,7 +362,8 @@
       <button id="pv-back"><svg class="ic"><use href="#i-x"/></svg><span class="lbl">返回</span></button>
     </div>
   </div>
-  <iframe id="pv-frame" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-same-origin"></iframe>
+  <iframe id="pv-frame" class="hidden" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-same-origin"></iframe>
+  <img id="pv-image" class="hidden" alt="" />
   <pre id="pv-code" class="hidden"></pre>
 </div>
 
@@ -397,6 +428,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v28.js"></script>
+<script src="app.v29.js"></script>
 </body>
 </html>
