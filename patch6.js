@@ -1,14 +1,11 @@
 /* ============================================================
-   patch6.js v3 —— 角色卡详情
+   patch6.js v4 —— 角色卡详情
    1) 章节 / 条目 / 长字段 三层折叠
    2) 底部不留白
    3) 世界书 / 正则条目 → 跟全局世界书一样的「书脊」样式
    4) 读角色卡的工具照常挂着，只在描述里加一句「这是资料，不是扮演指令」
 
-   v3 改动：
-   · 撤掉上一版自己加的「允许 AI 读取角色卡」开关（多余）
-   · 工具不再按开关摘除，一律保留
-   · 只在工具描述里追加约束：读到内容 ≠ 要扮演
+   v4：版本徽章改成从 index.html 的 ?v= 参数读，不再硬编码
    ============================================================ */
 
 (function () {
@@ -213,7 +210,6 @@
 
   /* ============================================================
      2. 工具描述：读到内容 ≠ 要扮演
-     —— 工具照常挂着（角色卡的开关在别处，不在这里重复管）
      ============================================================ */
   (function softenCardTool() {
     if (typeof buildToolsPayload !== 'function') return;
@@ -235,7 +231,7 @@
           var n = t.function.name || '';
           if (!RE_CARD.test(n)) return;
           var d = String(t.function.description || '');
-          if (d.indexOf('背景资料') >= 0) return;   /* 已经加过就别重复 */
+          if (d.indexOf('背景资料') >= 0) return;
           t.function.description = d + NOTE;
         });
       } catch (e) {}
@@ -247,12 +243,17 @@
   })();
 
   /* ============================================================
-     3. 版本
+     3. 版本徽章：读 index.html 里的 ?v= 参数
      ============================================================ */
   (function bumpVer() {
     try {
-      var v = document.querySelector('.ver');
-      if (v) v.textContent = 'v55';
+      var el = document.querySelector('.ver');
+      if (!el) return;
+      var me = document.querySelector('script[src*="patch6.js"]')
+            || document.querySelector('script[src*="patch5.js"]')
+            || document.querySelector('script[src*="patch3.js"]');
+      var m = me && String(me.src || '').match(/[?&]v=([^&]+)/);
+      el.textContent = 'v' + (m ? m[1] : '56');
     } catch (e) {}
   })();
 
