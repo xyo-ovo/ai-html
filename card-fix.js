@@ -1,24 +1,67 @@
 /* ============================================================
-   card-fix.js v7 —— 让错误可见 + 清洗畸形数据
+   card-fix.js v8 —— 补上 LS.cards 存取器（真正的根因）
 
-   修两件事：
-   1) 之前 doImport 的 .catch 只 console.warn，界面完全没反馈
-      → 现在一律 toast 出来，能看到具体哪步炸的
-   2) parseCardJson 里遍历世界书/正则条目时假设每项都是对象，
-      遇到 null / 字符串会抛 TypeError
-      → 覆盖 parseCardJson，先过滤掉非对象项再交给原实现
+   之前所有"点了没反应"，最底层都栽在这里：
+   app.v29.js 里的 LS 对象只定义了
+     providers / activeId / themeMode / themeColor /
+     tools / lore / sessions / persona
+   唯独漏了 cards。
+
+   而 extra.v4.js 到处在用 LS.cards.slice()、LS.cards = arr，
+   LS.cards 读出来是 undefined → .slice() 直接抛
+   TypeError: Cannot read properties of undefined (reading 'slice')
+
+   本脚本在最开头给 LS 补上 cards 的 getter/setter（localStorage 持久化），
+   导入 / 列表 / 开关 / 删除就全通了。
 
    另外保留：
    · 按钮换 id（btn-import-card-v2）躲开 extra.v4.js 的旧委托
+   · 错误一律 toast 出来
+   · 覆盖 parseCardJson 清洗畸形条目
    · 粘贴 JSON 导入
    ============================================================ */
+
+/* ---------- 0. 补 LS.cards（最关键，必须最先跑） ---------- */
+(function ensureCardsStorage() {
+  if (typeof LS === 'undefined' || !LS) return;
+
+  var d = null;
+  try { d = Object.getOwnPropertyDescriptor(LS, 'cards'); } catch (e) {}
+  if (d && (d.get || d.set)) return;   /* 已经有了就不重复定义 */
+
+  try {
+    Object.defineProperty(LS, 'cards', {
+      get: function () {
+        try {
+          var raw = localStorage.getItem('aih.cards');
+          var arr = raw ? JSON.parse(raw) : [];
+          return Array.isArray(arr) ? arr : [];
+        } catch (e) {
+          return [];
+        }
+      },
+      set: function (v) {
+        try {
+          localStorage.setItem('aih.cards', JSON.stringify(Array.isArray(v) ? v : []));
+        } catch (e) {
+          /* 存不下就算了，别让调用方崩 */
+          try { console.warn('[card-fix] 存角色卡失败（可能超容量）', e); } catch (_) {}
+        }
+      },
+      configurable: true,
+      enumerable: true,
+    });
+  } catch (e) {
+    try { console.warn('[card-fix] 无法定义 LS.cards', e); } catch (_) {}
+  }
+})();
 
 (function () {
   'use strict';
 
   var BTN_ID = 'btn-import-card-v2';
 
-  /* ---------- 0. 安全 toast ---------- */
+  /* ---------- 1. 安全 toast ---------- */
   function say(msg, ms) {
     try {
       if (typeof toast === 'function') toast(msg, ms || 3600);
@@ -29,12 +72,11 @@
   }
   window.__cardFixSay = say;
 
-  /* ---------- 1. 覆盖 parseCardJson：先清洗，再交给原实现 ---------- */
+  /* ---------- 2. 覆盖 parseCardJson：先清洗再交给原实现 ---------- */
   function sanitizeCardJson(json) {
     try {
       var d = (json && (json.data || json)) || {};
 
-      /* 世界书：过滤非对象项 */
       var book = d.character_book || d.world_info || d.worldInfo;
       if (book) {
         if (Array.isArray(book)) {
@@ -47,7 +89,6 @@
         }
       }
 
-      /* 正则：过滤非对象项 */
       var ex = d.extensions;
       if (ex && typeof ex === 'object') {
         var rx = ex.regex_scripts || ex.Regex;
@@ -61,7 +102,6 @@
         d.regex_scripts = d.regex_scripts.filter(function (r) { return r && typeof r === 'object'; });
       }
 
-      /* alternate_greetings：过滤空值 */
       if (Array.isArray(d.alternate_greetings)) {
         d.alternate_greetings = d.alternate_greetings.filter(function (g) {
           return g != null && String(g).trim();
@@ -84,7 +124,7 @@
     try { parseCardJson = patched; } catch (e) {}
   })();
 
-  /* ---------- 2. 导入入口：错误必须可见 ---------- */
+  /* ---------- 3. 导入入口：错误必须可见 ---------- */
   function pickEl() {
     return document.getElementById('pick-card');
   }
@@ -105,7 +145,6 @@
 
     (function next() {
       if (i >= files.length) {
-        /* 全部跑完，给个总反馈 */
         if (errList.length) {
           say('导入失败：' + errList[0], 5200);
         } else if (okCount === 0) {
@@ -122,7 +161,6 @@
           var m = (e && e.message) || String(e);
           errList.push(fname + '：' + m);
           try { console.warn('[card-fix] 导入出错', e); } catch (_) {}
-          /* 单文件出错也立刻提示，不用等全部跑完 */
           say('「' + fname + '」导入出错：' + m, 5200);
         })
         .then(function () { setTimeout(next, 0); });
@@ -130,7 +168,7 @@
   }
   window.__cardFixImport = doImport;
 
-  /* ---------- 3. 绑定（不 preventDefault） ---------- */
+  /* ---------- 4. 绑定（不 preventDefault） ---------- */
   function bind() {
     var btn = document.getElementById(BTN_ID);
     var p = pickEl();
@@ -161,7 +199,7 @@
     }
   }, true);
 
-  /* ---------- 4. 粘贴导入 ---------- */
+  /* ---------- 5. 粘贴导入 ---------- */
   window.__cardFixImportText = function (text) {
     var t = String(text == null ? '' : text).trim();
     if (!t) { say('先粘贴内容', 2600); return; }
@@ -212,7 +250,9 @@
       regex: parsed.regex || [],
     };
 
-    var arr = (LS.cards || []).slice();
+    var arr;
+    try { arr = (LS.cards || []).slice(); }
+    catch (e) { arr = []; }
     arr.unshift(card);
     try {
       LS.cards = arr;
