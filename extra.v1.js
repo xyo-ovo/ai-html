@@ -1,15 +1,15 @@
 /* ============================================================
-   AI HTML 工坊 · 增强补丁 v1
-   在 app.v29.js 之后加载，覆盖/新增：
+   AI HTML 工坊 · 增强补丁 v2
+   在 app.v29.js 之后加载。包含：
    · 代码块行号 + 语法高亮
    · 继续生成
    · 编辑 AI 回复
    · 对话内搜索（Ctrl+F）
    · 重新生成保留滚动位置
-   · 角色卡导入（PNG / JSON，含内嵌世界书）
+   · 角色卡资料库（导入 PNG / JSON，可浏览 · 可开关 · AI 可读）
    ============================================================ */
 
-/* ---------- 1. 语法高亮 ---------- */
+/* ================= 1. 语法高亮 ================= */
 const KW_SET = new Set(('if else for while do switch case break continue return function class extends new this super import export from default try catch finally throw typeof instanceof delete void yield in of let const var async await static get set public private protected readonly abstract implements interface enum type namespace declare as satisfies package using struct union typedef sizeof extern inline template typename virtual override final operator ' +
   'def elif pass raise with lambda global nonlocal assert del is not and or None True False self print len range str int float list dict set tuple ' +
   'int float double char long short unsigned signed bool string define include ifdef ifndef endif pragma ' +
@@ -56,155 +56,7 @@ codeEl = function (lang, code) {
   return w;
 };
 
-/* ---------- 2. 角色卡导入 ---------- */
-function b64ToUtf8(b64) {
-  const clean = String(b64 || '').replace(/\s+/g, '');
-  const bin = atob(clean);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new TextDecoder('utf-8').decode(bytes);
-}
-
-async function readPngChara(file) {
-  const buf = new Uint8Array(await file.arrayBuffer());
-  if (buf.length < 16) return null;
-  const sig = [137, 80, 78, 71, 13, 10, 26, 10];
-  for (let i = 0; i < 8; i++) if (buf[i] !== sig[i]) return null;
-  const dec = new TextDecoder('latin1');
-  let pos = 8;
-  while (pos + 12 <= buf.length) {
-    const len = (buf[pos] << 24) | (buf[pos + 1] << 16) | (buf[pos + 2] << 8) | buf[pos + 3];
-    if (len < 0 || pos + 12 + len > buf.length) break;
-    const type = dec.decode(buf.slice(pos + 4, pos + 8));
-    const data = buf.slice(pos + 8, pos + 8 + len);
-    if (type === 'tEXt' || type === 'iTXt') {
-      const sep = data.indexOf(0);
-      if (sep > 0) {
-        const key = dec.decode(data.slice(0, sep));
-        let val = '';
-        if (type === 'tEXt') {
-          val = dec.decode(data.slice(sep + 1));
-        } else {
-          let idx = sep + 3;
-          const l2 = data.indexOf(0, idx);
-          if (l2 < 0) { pos += 12 + len; continue; }
-          idx = l2 + 1;
-          const l3 = data.indexOf(0, idx);
-          if (l3 < 0) { pos += 12 + len; continue; }
-          idx = l3 + 1;
-          val = new TextDecoder('utf-8').decode(data.slice(idx));
-        }
-        if (key === 'chara' || key === 'ccv3' || key === 'Chara') return val;
-      }
-    }
-    pos += 12 + len;
-    if (type === 'IEND') break;
-  }
-  return null;
-}
-
-function cardToPersona(card) {
-  const d = (card && (card.data || card)) || {};
-  const name = String(d.name || d.char_name || '未命名角色').slice(0, 24);
-  const parts = [];
-  const push = (label, txt) => {
-    const t = String(txt == null ? '' : txt).trim();
-    if (t) parts.push(label ? '【' + label + '】\n' + t : t);
-  };
-  push('', d.description);
-  push('性格', d.personality);
-  push('场景', d.scenario);
-  push('对话示例', d.mes_example || d.example_dialogue);
-  push('', d.system_prompt || d.systemPrompt);
-  push('作者备注', d.creator_notes || d.creatorcomment);
-  const greeting = String(d.first_mes || d.greeting || '').trim();
-  return { name, bio: parts.join('\n\n'), greeting, raw: d };
-}
-
-function cardToLore(card) {
-  const d = (card && (card.data || card)) || {};
-  const book = d.character_book || d.world_info || d.worldInfo || null;
-  const out = [];
-  if (!book) return out;
-  const entries = Array.isArray(book) ? book : (book.entries || []);
-  for (const e of entries) {
-    if (!e || e.enabled === false) continue;
-    let keys = e.keys || e.key || e.keywords || [];
-    if (typeof keys === 'string') keys = keys.split(',');
-    keys = (Array.isArray(keys) ? keys : []).map(k => String(k).trim()).filter(Boolean);
-    const content = String(e.content || e.entry || '').trim();
-    if (!content) continue;
-    out.push({
-      id: uid(),
-      name: String(e.comment || e.name || keys[0] || '角色书条目').slice(0, 40),
-      keywords: keys.join(','),
-      content,
-      enabled: true,
-    });
-  }
-  return out;
-}
-
-async function importCharCard(file) {
-  const fname = String(file.name || '').toLowerCase();
-  let card = null;
-  try {
-    if (fname.endsWith('.png') || /^image\//.test(file.type || '')) {
-      const b64 = await readPngChara(file);
-      if (!b64) { toast('这张 PNG 里没有角色卡数据'); return; }
-      let txt = b64.trim();
-      if (!txt.startsWith('{')) {
-        try { txt = b64ToUtf8(b64); } catch (e) {}
-      }
-      card = JSON.parse(txt);
-    } else {
-      const txt = await readAsText(file);
-      card = JSON.parse(txt);
-    }
-  } catch (e) {
-    toast('解析失败：' + (e && e.message ? e.message : '格式不对'));
-    return;
-  }
-  if (!card || typeof card !== 'object') { toast('角色卡内容无效'); return; }
-
-  const { name, bio, greeting, raw } = cardToPersona(card);
-  const loreAdd = cardToLore(card);
-
-  const s = currentSession();
-  if (!s) return;
-  const oldP = sessionPersona();
-  s.persona = {
-    avatar: oldP.avatar || '🎭',
-    name,
-    bio,
-    greeting,
-    allowTime: oldP.allowTime,
-    allowHistory: oldP.allowHistory,
-  };
-  if (!s.title || s.title === '新对话') {
-    s.title = name;
-    s.titled = true;
-  }
-  LS.sessions = sessions;
-
-  if (loreAdd.length) {
-    LS.lore = [...LS.lore, ...loreAdd];
-    renderLore();
-  }
-
-  renderBrand();
-  renderMessages();
-
-  const rx = raw.extensions && (raw.extensions.regex_scripts || raw.regex_scripts);
-  const rxN = Array.isArray(rx) ? rx.length : 0;
-  let msg = '已导入角色卡「' + name + '」';
-  if (loreAdd.length) msg += '，含 ' + loreAdd.length + ' 条世界书';
-  if (rxN) msg += '（' + rxN + ' 条正则未启用）';
-  toast(msg, 3200);
-  closeSheet('persona');
-}
-
-/* ---------- 3. renderMsg（加「编辑 AI」「继续生成」按钮） ---------- */
+/* ================= 2. renderMsg ================= */
 renderMsg = function (msg, idx) {
   const w = document.createElement('div');
   w.className = 'msg ' + msg.role;
@@ -292,7 +144,7 @@ renderMsg = function (msg, idx) {
   return w;
 };
 
-/* ---------- 4. startEdit（支持 AI 消息） ---------- */
+/* ================= 3. startEdit ================= */
 startEdit = function (idx) {
   if (streaming) { toast('生成中，先停止再操作'); return; }
   const msg = messages[idx];
@@ -319,7 +171,7 @@ startEdit = function (idx) {
   try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
 };
 
-/* ---------- 5. finalize（存 raw + 支持续写合并） ---------- */
+/* ================= 4. finalize ================= */
 finalize = async function (msg, idx, segs, reasoning, thinkSecs, base) {
   const parts = [];
   const usedNames = new Set();
@@ -362,7 +214,204 @@ finalize = async function (msg, idx, segs, reasoning, thinkSecs, base) {
   else renderMessages();
 };
 
-/* ---------- 6. runAssistant（支持续写 append） ---------- */
+/* ================= 5. 角色卡数据层 ================= */
+function parseCardJson(json) {
+  const d = (json && (json.data || json)) || {};
+  const str = v => String(v == null ? '' : v);
+  const arr = v => Array.isArray(v) ? v.map(str) : (v ? [str(v)] : []);
+  const fields = {
+    name: str(d.name || d.char_name) || '未命名角色',
+    description: str(d.description),
+    personality: str(d.personality),
+    scenario: str(d.scenario),
+    first_mes: str(d.first_mes || d.greeting),
+    mes_example: str(d.mes_example || d.example_dialogue),
+    creator_notes: str(d.creator_notes || d.creatorcomment),
+    system_prompt: str(d.system_prompt),
+    post_history_instructions: str(d.post_history_instructions),
+    creator: str(d.creator),
+    character_version: str(d.character_version),
+    tags: arr(d.tags),
+    alternate_greetings: arr(d.alternate_greetings),
+  };
+
+  const bookSrc = d.character_book || d.world_info || d.worldInfo || null;
+  const book = { name: '', entries: [] };
+  if (bookSrc) {
+    if (Array.isArray(bookSrc)) {
+      book.entries = bookSrc;
+    } else {
+      book.name = str(bookSrc.name);
+      book.entries = Array.isArray(bookSrc.entries) ? bookSrc.entries : [];
+    }
+  }
+  book.entries = book.entries.map((e, i) => {
+    const kk = arr(e.keys || e.key || e.keywords);
+    const sk = arr(e.secondary_keys || e.secondaryKeys);
+    return {
+      id: 'e' + i,
+      name: str(e.comment || e.name) || (kk[0] || ('条目 ' + (i + 1))),
+      keys: kk,
+      secondary_keys: sk,
+      content: str(e.content || e.entry),
+      enabled: e.enabled !== false,
+      insertion_order: (typeof e.insertion_order === 'number') ? e.insertion_order
+        : ((typeof e.insertionOrder === 'number') ? e.insertionOrder : 100),
+      constant: !!e.constant,
+      case_sensitive: !!(e.case_sensitive || e.caseSensitive),
+      position: str(e.position),
+    };
+  });
+
+  const rxSrc = (d.extensions && (d.extensions.regex_scripts || d.extensions.Regex)) || d.regex_scripts || [];
+  const regex = (Array.isArray(rxSrc) ? rxSrc : []).map((r, i) => ({
+    id: 'r' + i,
+    name: str(r.scriptName || r.name) || ('正则 ' + (i + 1)),
+    findRegex: str(r.findRegex),
+    replaceString: str(r.replaceString),
+    disabled: !!r.disabled,
+  }));
+
+  return { fields, book, regex };
+}
+
+function cardStats(card) {
+  const nBook = ((card.book && card.book.entries) || []).length;
+  const nRx = (card.regex || []).length;
+  const bits = [];
+  if (nBook) bits.push(nBook + ' 条世界书');
+  if (nRx) bits.push(nRx + ' 条正则');
+  if (!bits.length) bits.push('仅人设');
+  return bits.join(' · ');
+}
+
+function cardBrief(card) {
+  const f = card.fields || {};
+  const lines = [];
+  lines.push('名称：' + f.name);
+  if (f.creator) lines.push('作者：' + f.creator + (f.character_version ? ' / ' + f.character_version : ''));
+  if (f.tags && f.tags.length) lines.push('标签：' + f.tags.join('、'));
+  const put = (label, v) => { if (v) lines.push('【' + label + '】\n' + v); };
+  put('描述', f.description);
+  put('性格', f.personality);
+  put('场景', f.scenario);
+  put('开场白', f.first_mes);
+  put('对话示例', f.mes_example);
+  put('系统提示', f.system_prompt);
+  put('历史后指令', f.post_history_instructions);
+  if (f.alternate_greetings && f.alternate_greetings.length) {
+    lines.push('【备用开场白】');
+    f.alternate_greetings.forEach((g, i) => lines.push('(' + (i + 1) + ') ' + g));
+  }
+  const es = (card.book && card.book.entries) || [];
+  if (es.length) {
+    lines.push('【世界书 · ' + es.length + ' 条】');
+    es.forEach((e, i) => {
+      lines.push('#' + (i + 1) + ' ' + e.name + (e.enabled === false ? '（已关闭）' : '') +
+        (e.constant ? '（常驻）' : ''));
+      lines.push('关键词：' + (e.keys.join(', ') || '无') +
+        (e.secondary_keys.length ? ' ｜ 次关键词：' + e.secondary_keys.join(', ') : ''));
+      lines.push('内容：' + e.content);
+    });
+  }
+  const rs = card.regex || [];
+  if (rs.length) {
+    lines.push('【正则 · ' + rs.length + ' 条】');
+    rs.forEach((r, i) => {
+      lines.push('#' + (i + 1) + ' ' + r.name + (r.disabled ? '（已禁用）' : ''));
+      lines.push('find：' + r.findRegex);
+      lines.push('replace：' + r.replaceString);
+    });
+  }
+  return lines.join('\n');
+}
+
+function readCardForAI(name, section) {
+  const sec = String(section || 'all').toLowerCase();
+  let list = LS.cards || [];
+  if (name) {
+    const q = String(name).toLowerCase();
+    const hit = list.filter(c => String(c.name || '').toLowerCase().includes(q));
+    if (hit.length) list = hit;
+  }
+  if (!list.length) {
+    const names = (LS.cards || []).map(c => c.name).join('、');
+    return names ? ('没有找到匹配的角色卡。当前已导入：' + names) : '当前没有导入任何角色卡。';
+  }
+  const out = [];
+  for (const c of list) {
+    if (sec === 'all') {
+      out.push(cardBrief(c));
+    } else if (sec === 'book') {
+      const es = (c.book && c.book.entries) || [];
+      out.push('【' + c.name + ' · 世界书 ' + es.length + ' 条】');
+      es.forEach((e, i) => {
+        out.push('#' + (i + 1) + ' ' + e.name + (e.enabled === false ? '（已关闭）' : ''));
+        out.push('关键词：' + e.keys.join(', '));
+        out.push('内容：' + e.content);
+      });
+    } else if (sec === 'regex') {
+      const rs = c.regex || [];
+      out.push('【' + c.name + ' · 正则 ' + rs.length + ' 条】');
+      rs.forEach((r, i) => {
+        out.push('#' + (i + 1) + ' ' + r.name + (r.disabled ? '（已禁用）' : ''));
+        out.push('find：' + r.findRegex);
+        out.push('replace：' + r.replaceString);
+      });
+    } else {
+      const f = c.fields || {};
+      out.push('【' + c.name + ' · 基础字段】');
+      for (const k of ['name', 'description', 'personality', 'scenario', 'first_mes', 'mes_example', 'system_prompt', 'post_history_instructions', 'creator', 'character_version']) {
+        if (f[k]) out.push(k + '：' + f[k]);
+      }
+      if (f.tags && f.tags.length) out.push('tags：' + f.tags.join('、'));
+    }
+  }
+  let s = out.join('\n\n');
+  if (s.length > 30000) s = s.slice(0, 30000) + '\n…（内容过长已截断）';
+  return s;
+}
+
+/* ================= 6. buildSystemPrompt / buildToolsPayload ================= */
+const _origBSP = buildSystemPrompt;
+buildSystemPrompt = function () {
+  let base = _origBSP();
+  const cards = (LS.cards || []).filter(c => c.active !== false);
+  if (!cards.length) return base;
+  let s = '\n\n【已导入的角色卡资料（供参考 / 可修改）】\n' +
+    cards.map(c => '──── ' + c.name + ' ────\n' + cardBrief(c)).join('\n\n');
+  if (s.length > 16000) s = s.slice(0, 16000) + '\n…（已截断，可用 read_character_card 工具读取完整内容）';
+  return base + s;
+};
+
+const _origBTP = buildToolsPayload;
+buildToolsPayload = function () {
+  const r = _origBTP();
+  const cards = (LS.cards || []).filter(c => c.active !== false);
+  if (cards.length) {
+    const used = new Set(r.tools.map(t => t.function && t.function.name));
+    if (!used.has('read_character_card')) {
+      r.tools.push({
+        type: 'function',
+        function: {
+          name: 'read_character_card',
+          description: '读取已导入角色卡的完整数据。用于帮用户检查或修改人设字段、世界书条目（含关键词、开关、内容）、正则脚本（find/replace）。',
+          parameters: {
+            type: 'object',
+            properties: {
+              card: { type: 'string', description: '角色卡名称（模糊匹配），留空读取全部' },
+              section: { type: 'string', description: '要读的部分：all（默认）/ fields / book / regex' },
+            },
+          },
+        },
+      });
+      r.map['read_character_card'] = { builtin: 'card' };
+    }
+  }
+  return r;
+};
+
+/* ================= 7. runAssistant ================= */
 let continueMode = false;
 
 runAssistant = async function () {
@@ -370,8 +419,7 @@ runAssistant = async function () {
   if (!p) return;
   const append = continueMode;
 
-  let aMsg, idx, el;
-  let base = null;
+  let aMsg, idx, el, base = null;
 
   if (append) {
     idx = messages.length - 1;
@@ -541,6 +589,8 @@ runAssistant = async function () {
             try { args = JSON.parse(t.args || '{}'); } catch (e) { args = {}; }
             if (target.builtin === 'history') {
               out = searchHistory(args.keyword || args.query || args.q);
+            } else if (target.builtin === 'card') {
+              out = readCardForAI(args.card || args.name, args.section);
             } else {
               const server = LS.tools.find(s => s.id === target.serverId);
               out = await mcpCallTool(server, target.toolName, args);
@@ -580,7 +630,8 @@ runAssistant = async function () {
       el.replaceWith(errEl);
     } else {
       toast('继续生成失败：' + errMsg, 3200);
-      if (aMsg) { const o2 = $msgs.querySelector('.msg[data-idx="' + idx + '"]'); if (o2) o2.replaceWith(renderMsg(aMsg, idx)); }
+      const o2 = $msgs.querySelector('.msg[data-idx="' + idx + '"]');
+      if (o2 && aMsg) o2.replaceWith(renderMsg(aMsg, idx));
     }
     saveMessages();
     if (autoScroll) scrollDown();
@@ -614,7 +665,7 @@ async function continueGen() {
   finally { continueMode = false; }
 }
 
-/* ---------- 7. send（编辑 AI 回复 = 作为你的消息重发） ---------- */
+/* ================= 8. send ================= */
 send = async function () {
   if (streaming) return;
   const text = $('#input').value.trim();
@@ -661,10 +712,12 @@ send = async function () {
   await runAssistant();
 };
 
-const _sendBtn = $('#btn-send');
-if (_sendBtn) _sendBtn.onclick = send;
+(function rebindSend() {
+  const b = $('#btn-send');
+  if (b) b.onclick = send;
+})();
 
-/* ---------- 8. 继续生成 / 重新生成（保留滚动位置） ---------- */
+/* ================= 9. 继续生成 / 重新生成 ================= */
 document.addEventListener('click', e => {
   const t = e.target;
   if (!t || !t.closest) return;
@@ -697,7 +750,7 @@ document.addEventListener('click', e => {
   }
 }, true);
 
-/* ---------- 9. 对话内搜索 ---------- */
+/* ================= 10. 对话内搜索 ================= */
 let findHits = [], findIdx = -1;
 
 function openFind() {
@@ -760,9 +813,7 @@ function runFind() {
       else if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
     });
   }
-  const prev = $('#find-prev');
-  const next = $('#find-next');
-  const close = $('#find-close');
+  const prev = $('#find-prev'), next = $('#find-next'), close = $('#find-close');
   if (prev) prev.onclick = () => jumpFind(findIdx - 1);
   if (next) next.onclick = () => jumpFind(findIdx + 1);
   if (close) close.onclick = closeFind;
@@ -782,20 +833,281 @@ function runFind() {
   });
 })();
 
-/* ---------- 10. 角色卡导入入口 ---------- */
-(function bindCardImport() {
-  const btn = $('#pa-import-card');
+/* ================= 11. 角色卡：导入 / 列表 / 详情 ================= */
+function b64ToUtf8(b64) {
+  const clean = String(b64 || '').replace(/\s+/g, '');
+  const bin = atob(clean);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+async function readPngChara(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  if (buf.length < 16) return null;
+  const sig = [137, 80, 78, 71, 13, 10, 26, 10];
+  for (let i = 0; i < 8; i++) if (buf[i] !== sig[i]) return null;
+  const dec = new TextDecoder('latin1');
+  let pos = 8;
+  while (pos + 12 <= buf.length) {
+    const len = (buf[pos] << 24) | (buf[pos + 1] << 16) | (buf[pos + 2] << 8) | buf[pos + 3];
+    if (len < 0 || pos + 12 + len > buf.length) break;
+    const type = dec.decode(buf.slice(pos + 4, pos + 8));
+    const data = buf.slice(pos + 8, pos + 8 + len);
+    if (type === 'tEXt' || type === 'iTXt') {
+      const sep = data.indexOf(0);
+      if (sep > 0) {
+        const key = dec.decode(data.slice(0, sep));
+        let val = '';
+        if (type === 'tEXt') {
+          val = dec.decode(data.slice(sep + 1));
+        } else {
+          let i2 = sep + 3;
+          const l2 = data.indexOf(0, i2);
+          if (l2 < 0) { pos += 12 + len; continue; }
+          i2 = l2 + 1;
+          const l3 = data.indexOf(0, i2);
+          if (l3 < 0) { pos += 12 + len; continue; }
+          i2 = l3 + 1;
+          val = new TextDecoder('utf-8').decode(data.slice(i2));
+        }
+        if (key === 'chara' || key === 'ccv3' || key === 'Chara') return val;
+      }
+    }
+    pos += 12 + len;
+    if (type === 'IEND') break;
+  }
+  return null;
+}
+
+async function importCardFile(file) {
+  const fname = String(file.name || '').toLowerCase();
+  let json = null;
+  try {
+    if (fname.endsWith('.png') || /^image\/png/.test(file.type || '')) {
+      const b64 = await readPngChara(file);
+      if (!b64) { toast('这张 PNG 里没有角色卡数据'); return; }
+      let txt = b64.trim();
+      if (!txt.startsWith('{')) {
+        try { txt = b64ToUtf8(b64); } catch (e) {}
+      }
+      json = JSON.parse(txt);
+    } else {
+      json = JSON.parse(await readAsText(file));
+    }
+  } catch (e) {
+    toast('解析失败：' + ((e && e.message) || '格式不对'));
+    return;
+  }
+  if (!json || typeof json !== 'object') { toast('角色卡内容无效'); return; }
+
+  const parsed = parseCardJson(json);
+  const card = {
+    id: uid(),
+    name: parsed.fields.name,
+    ts: Date.now(),
+    active: true,
+    fields: parsed.fields,
+    book: parsed.book,
+    regex: parsed.regex,
+  };
+
+  const arr = LS.cards.slice();
+  arr.unshift(card);
+  try {
+    LS.cards = arr;
+  } catch (e) {
+    toast('角色卡太大，存不下了', 3000);
+    return;
+  }
+
+  renderCardList();
+  const nB = parsed.book.entries.length;
+  const nR = parsed.regex.length;
+  toast('已导入「' + card.name + '」' +
+    (nB ? ' · ' + nB + ' 条世界书' : '') +
+    (nR ? ' · ' + nR + ' 条正则' : ''), 3000);
+}
+
+function renderCardList() {
+  const box = $('#card-list');
+  if (!box) return;
+  const list = LS.cards || [];
+  box.innerHTML = '';
+  if (!list.length) {
+    box.innerHTML = '<div class="empty" style="padding:20px">还没有角色卡<br>导入一张 PNG 或 JSON 试试</div>';
+    return;
+  }
+  for (const c of list) {
+    const d = document.createElement('div');
+    d.className = 'card-item';
+    d.innerHTML = '<div class="ci-ico">' + icon('book') + '</div>' +
+      '<div class="ci-meta">' +
+        '<div class="ci-t">' + esc(c.name) + '</div>' +
+        '<div class="ci-s">' + esc(cardStats(c)) + ' · ' + fmtTime(c.ts) + '</div>' +
+      '</div>' +
+      '<button class="ti-toggle' + (c.active !== false ? ' on' : '') + '" title="参与对话"></button>' +
+      '<button class="ti-edit" title="查看 / 编辑">' + icon('edit') + '</button>';
+    d.onclick = () => openCardView(c.id);
+    const tg = d.querySelector('.ti-toggle');
+    tg.onclick = ev => {
+      ev.stopPropagation();
+      const arr = LS.cards.slice();
+      const t = arr.find(x => x.id === c.id);
+      if (t) { t.active = t.active === false; LS.cards = arr; }
+      renderCardList();
+      toast(t && t.active === false ? '已停止参与对话' : '已参与对话');
+    };
+    d.querySelector('.ti-edit').onclick = ev => { ev.stopPropagation(); openCardView(c.id); };
+    box.appendChild(d);
+  }
+}
+
+let curCardId = null;
+
+function openCardView(id) {
+  curCardId = id;
+  renderCardView();
+  openSheet('card-view');
+}
+
+function renderCardView() {
+  const c = (LS.cards || []).find(x => x.id === curCardId);
+  const body = $('#cv-body');
+  if (!c || !body) return;
+  const ttl = $('#cv-title');
+  if (ttl) ttl.textContent = c.name;
+
+  const f = c.fields || {};
+  const esc2 = esc;
+  const sec = (title, inner) => '<div class="cv-sec"><h3>' + title + '</h3>' + inner + '</div>';
+  const field = (label, v) => v ? '<div class="cv-field"><div class="k">' + label + '</div><pre>' + esc2(v) + '</pre></div>' : '';
+
+  let html = '';
+
+  html += sec('基础信息',
+    '<div class="cv-field"><div class="k">名称</div><pre>' + esc2(f.name) + '</pre></div>' +
+    field('作者', f.creator) +
+    field('版本', f.character_version) +
+    field('标签', (f.tags || []).join('、')) +
+    field('作者备注', f.creator_notes) +
+    '<div class="cv-field"><div class="k">参与对话</div><pre>' + (c.active !== false ? '开启（内容会注入系统提示，AI 可读）' : '关闭') + '</pre></div>'
+  );
+
+  html += sec('人设字段',
+    field('描述 description', f.description) +
+    field('性格 personality', f.personality) +
+    field('场景 scenario', f.scenario) +
+    field('开场白 first_mes', f.first_mes) +
+    field('对话示例 mes_example', f.mes_example) +
+    field('系统提示 system_prompt', f.system_prompt) +
+    field('历史后指令 post_history_instructions', f.post_history_instructions) +
+    ((f.alternate_greetings || []).length
+      ? '<div class="cv-field"><div class="k">备用开场白（' + f.alternate_greetings.length + ' 条）</div><pre>' +
+        esc2(f.alternate_greetings.map((g, i) => '(' + (i + 1) + ') ' + g).join('\n\n')) + '</pre></div>'
+      : '')
+  );
+
+  const es = (c.book && c.book.entries) || [];
+  let bookHtml = es.length ? '' : '<div class="hint">这张卡没有内嵌世界书</div>';
+  es.forEach((e, i) => {
+    bookHtml += '<div class="cv-entry' + (e.enabled === false ? ' off' : '') + '" data-eid="' + esc2(e.id) + '">' +
+      '<div class="eh">' +
+        '<span class="en">#' + (i + 1) + ' ' + esc2(e.name) + (e.constant ? ' · 常驻' : '') + '</span>' +
+        '<button class="ti-toggle' + (e.enabled !== false ? ' on' : '') + '" title="开关"></button>' +
+      '</div>' +
+      '<div class="ek">' + esc2(e.keys.join(' , ') || '（无关键词）') +
+        (e.secondary_keys.length ? ' ｜ ' + esc2(e.secondary_keys.join(' , ')) : '') + '</div>' +
+      '<div class="ec">' + esc2(e.content) + '</div>' +
+    '</div>';
+  });
+  html += sec('世界书 · ' + es.length + ' 条', bookHtml);
+
+  const rs = c.regex || [];
+  let rxHtml = rs.length ? '' : '<div class="hint">这张卡没有正则脚本</div>';
+  rs.forEach((r, i) => {
+    rxHtml += '<div class="cv-entry' + (r.disabled ? ' off' : '') + '">' +
+      '<div class="eh"><span class="en">#' + (i + 1) + ' ' + esc2(r.name) + (r.disabled ? ' · 已禁用' : '') + '</span></div>' +
+      '<div class="ek">find：' + esc2(r.findRegex) + '</div>' +
+      '<div class="ec">replace：' + esc2(r.replaceString) + '</div>' +
+    '</div>';
+  });
+  html += sec('正则 · ' + rs.length + ' 条', rxHtml);
+
+  html += '<div class="row between" style="margin-top:6px;padding-top:16px;border-top:1px solid var(--line)">' +
+    '<button class="ghost danger" id="cv-del">删除这张卡</button>' +
+    '<button class="ghost" id="cv-copy">复制全部数据</button>' +
+  '</div>';
+
+  body.innerHTML = html;
+
+  body.querySelectorAll('.cv-entry').forEach(el => {
+    const tg = el.querySelector('.ti-toggle');
+    if (!tg) return;
+    const eid = el.dataset.eid;
+    tg.onclick = ev => {
+      ev.stopPropagation();
+      const arr = LS.cards.slice();
+      const card = arr.find(x => x.id === curCardId);
+      if (!card) return;
+      const entry = (card.book.entries || []).find(x => x.id === eid);
+      if (!entry) return;
+      entry.enabled = entry.enabled === false;
+      LS.cards = arr;
+      el.classList.toggle('off', entry.enabled === false);
+      tg.classList.toggle('on', entry.enabled !== false);
+      toast(entry.enabled === false ? '已关闭该条目' : '已开启该条目');
+    };
+  });
+
+  const del = body.querySelector('#cv-del');
+  if (del) del.onclick = () => {
+    if (!confirm('删除角色卡「' + c.name + '」？')) return;
+    LS.cards = (LS.cards || []).filter(x => x.id !== c.id);
+    closeSheet('card-view');
+    renderCardList();
+    toast('已删除');
+  };
+
+  const cp = body.querySelector('#cv-copy');
+  if (cp) cp.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(cardBrief(c));
+      toast('已复制到剪贴板');
+    } catch (e) { toast('复制失败，可手动选中'); }
+  };
+}
+
+/* ================= 12. switchPage ================= */
+const _origSwitchPage = switchPage;
+switchPage = function (name) {
+  _origSwitchPage(name);
+  if (name === 'card') renderCardList();
+};
+
+/* ================= 13. 绑定 ================= */
+(function bindCards() {
+  const btn = $('#btn-import-card');
   const pick = $('#pick-card');
   if (btn && pick) {
     btn.onclick = () => pick.click();
     pick.onchange = () => {
-      if (pick.files && pick.files.length) importCharCard(pick.files[0]);
+      const fs = pick.files;
+      if (fs && fs.length) {
+        (async () => {
+          for (const f of fs) await importCardFile(f);
+        })();
+      }
       pick.value = '';
     };
   }
+  const closeBtn = document.querySelector('#card-view [data-close]');
+  if (closeBtn) closeBtn.onclick = () => closeSheet('card-view');
+  const ov = $('#card-view');
+  if (ov) ov.addEventListener('click', e => { if (e.target === ov) ov.classList.add('hidden'); });
 })();
 
-/* ---------- 11. 初始化后刷新一次（让新按钮出现在已有消息上） ---------- */
+/* ================= 14. 刷新一次 ================= */
 setTimeout(() => {
-  try { renderMessages(); } catch (e) {}
+  try { renderMessages(); renderCardList(); } catch (e) {}
 }, 0);
