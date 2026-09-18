@@ -1,13 +1,14 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="coral">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#FBF8F3" />
 <title>AI HTML 工坊</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23B08968'/%3E%3Ccircle cx='9' cy='9.5' r='1.7' fill='%23FFFDFA'/%3E%3Ccircle cx='14.6' cy='8.6' r='1.7' fill='%23FFFDFA'/%3E%3Ccircle cx='10' cy='14.6' r='1.7' fill='%23FFFDFA'/%3E%3C/svg%3E" />
-<script>try{var t=localStorage.getItem('aih.themeMode')||localStorage.getItem('aih.theme');if(t!=='light'&&t!=='dark'&&t!=='auto')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}</script>
+<script>try{var tm=localStorage.getItem('aih.themeMode')||localStorage.getItem('aih.theme')||'light';var tc=localStorage.getItem('aih.themeColor')||'coral';var d=tm==='dark'||(tm==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;r.classList.toggle('dark',d);r.dataset.theme=tc;}catch(e){}</script>
 <link rel="stylesheet" href="style.v21.css" />
+<link rel="stylesheet" href="style.themes.css" />
 <style>
   .perm-row{display:flex;align-items:center;gap:14px;padding:13px 0}
   .perm-row + .perm-row{border-top:1px solid var(--line)}
@@ -53,7 +54,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v24</span>
+    <span class="ver">v25</span>
   </div>
   <div class="actions">
     <button id="btn-persona" class="icon-btn" title="AI 人设（当前对话）"><svg class="ic"><use href="#i-edit"/></svg></button>
@@ -117,6 +118,7 @@
             <button type="button" data-mode="auto">自动</button>
           </div>
           <div class="swatches" id="theme-colors"></div>
+          <p class="hint" style="margin-top:-2px">每个主题是一整套配色：背景、文字、强调色、渐变、阴影都跟着换。</p>
         </div>
       </section>
       <div class="row end">
@@ -294,6 +296,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v24.js"></script>
+<script src="app.v25.js"></script>
 </body>
 </html>
