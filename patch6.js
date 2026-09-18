@@ -1,12 +1,14 @@
 /* ============================================================
-   patch6.js v5 —— 角色卡详情
+   patch6.js v6 —— 角色卡详情
    1) 章节 / 条目 / 长字段 三层折叠
-   2) 底部彻底不留白（这版加 !important + height:auto 强压）
+   2) 弹层高度 = 内容高度（最多 88vh），底部不留白
    3) 世界书 / 正则条目 → 跟全局世界书一样的「书脊」样式
    4) 读角色卡的工具照常挂着，只在描述里加一句「这是资料，不是扮演指令」
 
-   v5：底部留白的问题在于 .sheet 可能被设了固定高度或 flex:1，
-       这次直接把 height 压成 auto、把所有可能的 margin/padding 归零。
+   v6：上一版 height:auto 没压住，这次
+       · CSS 补 min-height:0（高度多半是被它撑的）
+       · 再加一层 JS 直接写行内样式，绕过一切优先级问题
+       · 打开弹层时多次重测，防止内容异步渲染完才撑高
    ============================================================ */
 
 (function () {
@@ -23,10 +25,11 @@
     s.id = 'p6-css';
     s.textContent = [
 
-      /* ---- 1. 弹层：内容多高就多高，最多 88vh，底部不留白 ---- */
+      /* ---- 1. 弹层：高度跟着内容走，最多 88vh，底部不留白 ---- */
       '#card-view .sheet{',
-      '  max-height:88vh !important;',
       '  height:auto !important;',
+      '  min-height:0 !important;',
+      '  max-height:88vh !important;',
       '  display:flex !important;',
       '  flex-direction:column !important;',
       '  padding-bottom:0 !important;',
@@ -34,8 +37,8 @@
       '}',
       '#card-view .sheet-body{',
       '  flex:0 1 auto !important;',
-      '  min-height:0 !important;',
       '  height:auto !important;',
+      '  min-height:0 !important;',
       '  max-height:none !important;',
       '  overflow-y:auto !important;',
       '  padding-bottom:0 !important;',
@@ -135,7 +138,52 @@
   })();
 
   /* ============================================================
-     1. 折叠增强
+     1. 直接写行内样式，绕过一切优先级问题
+     ============================================================ */
+  function fitCardSheet() {
+    try {
+      var overlay = document.getElementById('card-view');
+      if (!overlay) return;
+      var sheet = overlay.querySelector('.sheet');
+      var body = document.getElementById('cv-body');
+      if (!sheet) return;
+
+      /* 弹层本身：高度跟着内容，最多 88vh */
+      sheet.style.setProperty('height', 'auto', 'important');
+      sheet.style.setProperty('min-height', '0', 'important');
+      sheet.style.setProperty('max-height', '88vh', 'important');
+      sheet.style.setProperty('padding-bottom', '0', 'important');
+      sheet.style.setProperty('margin-bottom', '0', 'important');
+
+      if (body) {
+        body.style.setProperty('height', 'auto', 'important');
+        body.style.setProperty('min-height', '0', 'important');
+        body.style.setProperty('max-height', 'none', 'important');
+        body.style.setProperty('padding-bottom', '0', 'important');
+        body.style.setProperty('margin-bottom', '0', 'important');
+
+        /* 最后一项的 margin 直接清掉 */
+        var kids = body.children;
+        if (kids && kids.length) {
+          var last = kids[kids.length - 1];
+          if (last && last.style) {
+            last.style.marginBottom = '0';
+            last.style.paddingBottom = '0';
+            /* 它里面的最后一个也别拖尾 */
+            var inner = last.lastElementChild;
+            if (inner && inner.style) {
+              inner.style.marginBottom = '0';
+              inner.style.paddingBottom = '0';
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+  window.__cardFit = fitCardSheet;
+
+  /* ============================================================
+     2. 折叠增强
      ============================================================ */
   function enhanceCardView() {
     try {
@@ -165,6 +213,7 @@
         h3.addEventListener('click', function (e) {
           if (e.target.closest && e.target.closest('.cv-btns')) return;
           sec.classList.toggle('folded');
+          setTimeout(fitCardSheet, 60);
         });
       });
 
@@ -181,6 +230,7 @@
         eh.addEventListener('click', function (e) {
           e.stopPropagation();
           en.classList.toggle('folded');
+          setTimeout(fitCardSheet, 60);
         });
       });
 
@@ -196,15 +246,8 @@
         });
       });
 
-      /* ---- 收尾：把最后一项的 margin / padding 归零 ---- */
-      var kids = body.children;
-      if (kids && kids.length) {
-        var last = kids[kids.length - 1];
-        if (last && last.style) {
-          last.style.marginBottom = '0';
-          last.style.paddingBottom = '0';
-        }
-      }
+      /* 收尾：压一次高度 */
+      fitCardSheet();
 
     } catch (e) {}
   }
@@ -219,7 +262,11 @@
       var tmr = 0;
       var mo = new MutationObserver(function () {
         if (tmr) return;
-        tmr = setTimeout(function () { tmr = 0; enhanceCardView(); }, 40);
+        tmr = setTimeout(function () {
+          tmr = 0;
+          enhanceCardView();
+          fitCardSheet();
+        }, 40);
       });
       try { mo.observe(body, { childList: true, subtree: false }); } catch (e) {}
     }
@@ -228,21 +275,29 @@
     setTimeout(bind, 600);
     setTimeout(bind, 2000);
 
+    /* 点角色卡列表项 → 打开弹层，多测几次（内容可能是异步渲染的） */
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
-      if (t.closest('#card-list') || t.closest('#card-view')) {
-        setTimeout(enhanceCardView, 50);
+      if (t.closest('#card-list')) {
+        fitCardSheet();
+        setTimeout(fitCardSheet, 40);
+        setTimeout(fitCardSheet, 150);
+        setTimeout(fitCardSheet, 350);
+        setTimeout(fitCardSheet, 700);
+        setTimeout(enhanceCardView, 60);
         setTimeout(enhanceCardView, 260);
       }
     }, true);
 
     enhanceCardView();
-    setTimeout(enhanceCardView, 400);
+    fitCardSheet();
+    setTimeout(fitCardSheet, 300);
+    setTimeout(fitCardSheet, 1000);
   })();
 
   /* ============================================================
-     2. 工具描述：读到内容 ≠ 要扮演
+     3. 工具描述：读到内容 ≠ 要扮演
      ============================================================ */
   (function softenCardTool() {
     if (typeof buildToolsPayload !== 'function') return;
@@ -276,7 +331,7 @@
   })();
 
   /* ============================================================
-     3. 版本徽章：读 index.html 里的 ?v= 参数，尾缀 a 表示本轮补丁
+     4. 版本徽章：读 index.html 里的 ?v= 参数，尾缀标本轮补丁
      ============================================================ */
   (function bumpVer() {
     try {
@@ -286,7 +341,7 @@
             || document.querySelector('script[src*="patch5.js"]')
             || document.querySelector('script[src*="patch3.js"]');
       var m = me && String(me.src || '').match(/[?&]v=([^&]+)/);
-      el.textContent = 'v' + (m ? m[1] : '56') + 'a';
+      el.textContent = 'v' + (m ? m[1] : '56') + 'b';
     } catch (e) {}
   })();
 
