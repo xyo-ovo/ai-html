@@ -15,6 +15,13 @@
   .perm-meta{flex:1 1 auto;min-width:0}
   .perm-name{font-size:14px;font-weight:600;letter-spacing:-.01em}
   .perm-sub{font-size:12px;color:var(--fg3);margin-top:3px;line-height:1.65}
+  #pv-code{
+    flex:1 1 auto;margin:0;overflow:auto;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+    font-family:var(--font-mono);font-size:13px;line-height:1.75;
+    color:var(--fg);background:var(--bg2);
+    white-space:pre-wrap;word-break:break-word;
+    -webkit-overflow-scrolling:touch;
+  }
 </style>
 </head>
 <body>
@@ -54,7 +61,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v25</span>
+    <span class="ver">v26</span>
   </div>
   <div class="actions">
     <button id="btn-persona" class="icon-btn" title="AI 人设（当前对话）"><svg class="ic"><use href="#i-edit"/></svg></button>
@@ -72,7 +79,7 @@
         <button id="edit-cancel">取消</button>
       </div>
       <div class="composer-inner">
-        <textarea id="input" rows="1" placeholder="说点什么，或让它写个网页…"></textarea>
+        <textarea id="input" rows="1" placeholder="说点什么，或让它写点东西…"></textarea>
         <button id="btn-stop" class="stop-btn hidden" title="停止生成"><svg class="ic"><use href="#i-stop"/></svg></button>
         <button id="btn-send" title="发送"><svg class="ic"><use href="#i-send"/></svg></button>
       </div>
@@ -233,6 +240,7 @@
     </div>
   </div>
   <iframe id="pv-frame" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-same-origin"></iframe>
+  <pre id="pv-code" class="hidden"></pre>
 </div>
 
 <div id="provider-edit" class="overlay hidden">
@@ -296,6 +304,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v25.js"></script>
+<script src="app.v26.js"></script>
 </body>
 </html>
