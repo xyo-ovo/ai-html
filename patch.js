@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v75：AI 消息可直接编辑（只替换内容，不重新生成、不动用户消息）
+   v76：修掉 AI 消息重复的「编辑」按钮
    ============================================================ */
 
 /* ============================================================
@@ -2081,7 +2081,6 @@
 
     m.content = newText;
 
-    /* 保留文件卡片 / 工具卡片，只把文字部分换成新的 */
     var parts = m.parts || [];
     var keep = [];
     for (var i = 0; i < parts.length; i++) {
@@ -2107,12 +2106,28 @@
   window.__editAssistantCommit = commit;
   window.__editAssistantActive = function () { return editingIdx; };
 
-  /* ---------- 给 AI 消息加「编辑」按钮 ---------- */
+  /* ---------- 给 AI 消息加「编辑」按钮（严格去重） ---------- */
   function addBtn(el, msg) {
     try {
       if (!el || !msg || msg.role !== 'assistant') return;
       var acts = el.querySelector('.msg-actions');
-      if (!acts || acts.querySelector('[data-act="editai"]')) return;
+      if (!acts) return;
+
+      /* 1) 移除原版给「用户消息」用的编辑键 —— 它对 AI 消息无效，是个死按钮 */
+      var olds = acts.querySelectorAll('[data-act="edit"]');
+      for (var k = 0; k < olds.length; k++) {
+        try { olds[k].remove(); } catch (e0) {}
+      }
+
+      /* 2) 去重：只保留第一个 editai */
+      var mine = acts.querySelectorAll('[data-act="editai"]');
+      if (mine.length) {
+        for (var j = 1; j < mine.length; j++) {
+          try { mine[j].remove(); } catch (e1) {}
+        }
+        return;
+      }
+
       var b = document.createElement('button');
       b.dataset.act = 'editai';
       b.title = '编辑这条（只替换，不重新生成）';
@@ -2135,7 +2150,6 @@
     try { window.renderMsg = _new; } catch (e) {}
   }
 
-  /* ---------- 点击「编辑」 ---------- */
   document.addEventListener('click', function (e) {
     var t = e.target;
     if (!t || !t.closest) return;
@@ -2147,7 +2161,6 @@
     start(Number(el.dataset.idx));
   }, true);
 
-  /* ---------- 拦截 send ---------- */
   if (typeof send === 'function' && !send.__editAiPatched) {
     var _origSend = send;
     var _newSend = async function () {
@@ -2170,7 +2183,6 @@
     try { window.send = _newSend; } catch (e) {}
   }
 
-  /* ---------- 重绑「发送」按钮（原版绑的是旧 send） ---------- */
   function rebindSend() {
     try {
       var b = document.getElementById('btn-send');
@@ -2184,7 +2196,6 @@
   setTimeout(rebindSend, 300);
   setTimeout(rebindSend, 1200);
 
-  /* ---------- 重绑「取消」按钮 ---------- */
   function rebindCancel() {
     try {
       var b = document.getElementById('edit-cancel');
@@ -2201,7 +2212,6 @@
   setTimeout(rebindCancel, 300);
   setTimeout(rebindCancel, 1200);
 
-  /* ---------- 已有消息补按钮 ---------- */
   function patchAll() {
     try {
       var nodes = document.querySelectorAll('#messages .msg.assistant');
@@ -2224,8 +2234,25 @@
       if (tmr) return;
       tmr = setTimeout(function () { tmr = 0; patchAll(); }, 140);
     });
-    try { mo.observe(box, { childList: true, subtree: false }); } catch (e) {}
+    try { mo.observe(box, { childList: true, subtree: true }); } catch (e) {}
   })();
+
+  /* 兜底：每秒扫一次，任何重复的编辑键都清掉 */
+  setInterval(function () {
+    try {
+      var nodes = document.querySelectorAll('#messages .msg.assistant .msg-actions');
+      Array.prototype.forEach.call(nodes, function (acts) {
+        var olds = acts.querySelectorAll('[data-act="edit"]');
+        for (var k = 0; k < olds.length; k++) {
+          try { olds[k].remove(); } catch (e0) {}
+        }
+        var mine = acts.querySelectorAll('[data-act="editai"]');
+        for (var j = 1; j < mine.length; j++) {
+          try { mine[j].remove(); } catch (e1) {}
+        }
+      });
+    } catch (e) {}
+  }, 1000);
 })();
 
 /* ============================================================
@@ -2236,7 +2263,7 @@
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v75';
+      el.textContent = 'v76';
     } catch (e) {}
   }
   set();
