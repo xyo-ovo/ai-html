@@ -577,6 +577,18 @@ html.dark .code-block{background:#191614;border-color:#2B2622}
 @media(min-width:640px){
   .sheet-body > .row.between:last-child{border-radius:0 0 26px 26px}
 }
+/* ---- v67：角色卡详情里的底部操作区不要撑出空白 ---- */
+#card-view .sheet-body > .row.between:last-child{
+  position:static !important;
+  margin:6px 0 0 0 !important;
+  padding:16px 0 0 0 !important;
+  background:none !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  border-top:1px solid var(--line) !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
 
 button.ghost{
   border:1.5px solid var(--line2);border-radius:16px;padding:12px 18px;
@@ -1001,27 +1013,6 @@ html[data-theme="coral"].dark{
 
 body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;inset:14px;border:2px dashed var(--acc);border-radius:26px;display:grid;place-items:center;font-size:15px;font-weight:600;color:var(--acc);background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:300;pointer-events:none}
 @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}}
-
-/* ============================================================
-   v66：折叠禁用（回到干净样子）
-   ============================================================ */
-#card-view .cv-sec.folded > *:not(h3),
-#card-view .cv-entry.folded .ec{
-  display:revert !important;
-  max-height:none !important;
-  opacity:1 !important;
-}
-#card-view .cv-field pre.clamp{
-  max-height:220px !important;
-  overflow:auto !important;
-  cursor:auto !important;
-}
-#card-view .cv-field pre.clamp::before,
-#card-view .cv-field pre.clamp::after{content:none !important}
-#card-view .cv-sec > h3{cursor:default !important}
-#card-view .cv-sec > h3::before{content:none !important}
-#card-view .cv-entry .eh{cursor:default !important}
-#card-view .cv-entry .eh::after{content:none !important}
 </style>
 </head>
 <body>
@@ -1070,7 +1061,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">机语工坊</span>
-    <span class="ver">v66</span>
+    <span class="ver">v67</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -1373,26 +1364,24 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 
 <script src="app.v29.js?v=66"></script>
 <script src="extra.v4.js?v=66"></script>
-<script src="patch.js?v=66"></script>
+<script src="patch.js?v=67"></script>
 <script>
 /* ============================================================
-   v66
-   patch.js 已不再写死弹层高度、也不再折叠，这里只兜底：
-   ① 徽章在最前面设，压住别的脚本
-   ② 万一有残留的行内高度 / folded / clamp，顺手清掉
+   v67
+   patch.js 已把角色卡详情相关的 JS 整段删掉；这里只兜底：
+   ① 徽章设成 v67
+   ② 万一有残留的写死高度 / folded / clamp，顺手清掉
    ============================================================ */
 (function () {
   'use strict';
 
   function clean() {
-    /* ① 徽章 */
     var v = document.querySelector('.ver');
-    if (v && v.textContent !== 'v66') v.textContent = 'v66';
+    if (v && v.textContent !== 'v67') v.textContent = 'v67';
 
     var ov = document.getElementById('card-view');
     if (!ov || ov.classList.contains('hidden')) return;
 
-    /* ② 清掉任何写死的行内高度 */
     var s = ov.querySelector('.sheet');
     if (s && s.style && s.style.length) {
       ['height', 'max-height', 'min-height', 'flex', 'align-self', 'padding-bottom', 'margin-bottom']
@@ -1404,7 +1393,6 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
         .forEach(function (k) { b.style.removeProperty(k); });
     }
 
-    /* ③ 清掉残留的折叠 / 截断 */
     if (b) {
       var folded = b.querySelectorAll('.folded');
       Array.prototype.forEach.call(folded, function (el) { el.classList.remove('folded'); });
