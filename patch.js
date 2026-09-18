@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v74：导航栏磨砂（顶栏 + 底栏浮动，内容可从底下穿过）
+   v75：AI 消息可直接编辑（只替换内容，不重新生成、不动用户消息）
    ============================================================ */
 
 /* ============================================================
@@ -146,7 +146,6 @@
 
     /* ============================================================
        导航栏磨砂（v74）
-       —— 顶栏 / 底栏浮起来，内容可从底下穿过
        ============================================================ */
     '#topbar{position:fixed !important;top:0;left:0;right:0;z-index:40;',
     '  background:color-mix(in srgb,var(--bg) 62%,transparent) !important;',
@@ -163,7 +162,6 @@
 
     '#tabbar button.on::after{box-shadow:0 0 8px color-mix(in srgb,var(--acc) 70%,transparent)}',
 
-    /* 内容留位（用 padding，让内容能滚到导航栏后面） */
     '#messages{padding-top:calc(26px + var(--nav-top,60px)) !important;',
     '  padding-bottom:calc(16px + var(--nav-bot,60px)) !important}',
 
@@ -171,10 +169,8 @@
 
     '.page-body{padding-bottom:calc(34px + var(--nav-bot,60px)) !important}',
 
-    /* 聊天页输入框让位给底栏 */
     '#page-chat #composer{margin-bottom:var(--nav-bot,60px) !important}',
 
-    /* 聊天页的「搜索条」也要让位 */
     '#page-chat #find-bar{margin-top:var(--nav-top,60px)}',
   ].join('\n');
   (document.head || document.documentElement).appendChild(s);
@@ -1559,7 +1555,6 @@
   function getKey() { try { return (localStorage.getItem(K_KEY) || '').trim(); } catch (e) { return ''; } }
   function getProxy() { try { return (localStorage.getItem(K_PROXY) || '').trim(); } catch (e) { return ''; } }
 
-  /* ---------- 开关状态：独立存储，最稳 ---------- */
   function isWebSearchOn() {
     try {
       var v = localStorage.getItem(K_ON);
@@ -1586,7 +1581,6 @@
   window.__wsIsOn = isWebSearchOn;
   window.__wsSetOn = setWebSearchOn;
 
-  /* ---------- 真正干活的请求 ---------- */
   async function searchRaw(args, key, proxy) {
     var q = String((args && (args.query || args.q || args.keyword)) || '').trim();
     if (!q) throw new Error('没有提供搜索关键词');
@@ -1630,7 +1624,6 @@
     return { query: q, results: (j && j.results) || [], answer: (j && j.answer) || '' };
   }
 
-  /* ---------- 给 AI 用的包装（返回纯文本） ---------- */
   async function doWebSearch(args) {
     var key = getKey();
     if (!key) return '（还没配置 Tavily API Key，请让用户在「设置 → 网页搜索」里填写）';
@@ -1651,7 +1644,6 @@
   }
   window.__webSearch = doWebSearch;
 
-  /* ---------- 拦截 mcpCallTool ---------- */
   if (typeof mcpCallTool === 'function' && !mcpCallTool.__wsPatched) {
     var _origCall = mcpCallTool;
     var _newCall = async function (server, name, args) {
@@ -1663,7 +1655,6 @@
     try { window.mcpCallTool = _newCall; } catch (e) {}
   }
 
-  /* ---------- sessionPersona 补字段 ---------- */
   if (typeof sessionPersona === 'function' && !sessionPersona.__wsPatched) {
     var _origSP = sessionPersona;
     var _newSP = function () {
@@ -1677,7 +1668,6 @@
     try { window.sessionPersona = _newSP; } catch (e) {}
   }
 
-  /* ---------- 保存人设后：刷新 UI ---------- */
   if (typeof savePersona === 'function' && !savePersona.__wsPatched) {
     var _origSave = savePersona;
     var _newSave = function () {
@@ -1690,7 +1680,6 @@
     try { window.savePersona = _newSave; } catch (e) {}
   }
 
-  /* ---------- 恢复默认后：也刷新 UI ---------- */
   if (typeof resetPersona === 'function' && !resetPersona.__wsPatched) {
     var _origReset = resetPersona;
     var _newReset = function () {
@@ -1703,7 +1692,6 @@
     try { window.resetPersona = _newReset; } catch (e) {}
   }
 
-  /* ---------- openPersona 同步开关 ---------- */
   if (typeof openPersona === 'function' && !openPersona.__wsPatched) {
     var _origOpen = openPersona;
     var _newOpen = function () {
@@ -1715,7 +1703,6 @@
     try { window.openPersona = _newOpen; } catch (e) {}
   }
 
-  /* ---------- buildToolsPayload 加工具 ---------- */
   if (typeof buildToolsPayload === 'function' && !buildToolsPayload.__wsPatched) {
     var _origBTP = buildToolsPayload;
     var _newBTP = function () {
@@ -1748,7 +1735,6 @@
     try { window.buildToolsPayload = _newBTP; } catch (e) {}
   }
 
-  /* ---------- buildSystemPrompt 声明搜索能力 ---------- */
   if (typeof buildSystemPrompt === 'function' && !buildSystemPrompt.__wsPatched) {
     var _origBSP = buildSystemPrompt;
     var _newBSP = function () {
@@ -1777,7 +1763,6 @@
     try { window.buildSystemPrompt = _newBSP; } catch (e) {}
   }
 
-  /* ---------- 能力栏开关 ---------- */
   function syncToggle() {
     try {
       var btn = document.getElementById('pa-websearch');
@@ -1821,7 +1806,6 @@
   setTimeout(injectPermRow, 300);
   setTimeout(injectPermRow, 1200);
 
-  /* ---------- 修复「保存」按钮绑定（原版绑定的是旧函数） ---------- */
   function rebindSave() {
     try {
       var b = document.getElementById('pa-save');
@@ -1835,7 +1819,6 @@
   setTimeout(rebindSave, 300);
   setTimeout(rebindSave, 1200);
 
-  /* ---------- 设置页配置块 ---------- */
   function updateStatus() {
     try {
       var el = document.getElementById('ws-status');
@@ -1971,7 +1954,6 @@
 
 /* ============================================================
    18. 导航栏高度同步（配合磨砂）
-   —— 顶栏 / 底栏浮起来后，用 JS 把实际高度写进 CSS 变量
    ============================================================ */
 (function navFrost() {
   'use strict';
@@ -2016,14 +1998,245 @@
 })();
 
 /* ============================================================
-   19. 版本徽章
+   19. 编辑 AI 消息（只替换内容，不重新生成、不动用户消息）
+   ============================================================ */
+(function editAssistantMsg() {
+  'use strict';
+
+  var editingIdx = null;
+
+  function say(msg, ms) {
+    try { if (typeof toast === 'function') toast(msg, ms || 3200); } catch (e) {}
+  }
+
+  function barEl() { return document.getElementById('edit-bar'); }
+  function barTextEl() {
+    var b = barEl();
+    return b ? b.querySelector('span') : null;
+  }
+
+  function showBar() {
+    try {
+      var b = barEl();
+      if (!b) return;
+      b.classList.remove('hidden');
+      var t = barTextEl();
+      if (t) t.textContent = '编辑 AI 消息 · 改完点发送就替换，不会重新生成';
+    } catch (e) {}
+  }
+  function hideBar() {
+    try {
+      var b = barEl();
+      if (b) b.classList.add('hidden');
+      var t = barTextEl();
+      if (t) t.textContent = '编辑中 · 发送后将从这条重新生成';
+    } catch (e) {}
+  }
+
+  function textOf(m) {
+    if (!m) return '';
+    var t = typeof m.content === 'string' ? m.content : '';
+    if (t.trim()) return t;
+    var parts = m.parts || [];
+    return parts.filter(function (p) { return p && p.type === 'text'; })
+      .map(function (p) { return p.text || ''; }).join('\n\n');
+  }
+
+  function start(idx) {
+    if (typeof streaming !== 'undefined' && streaming) { say('生成中，先停止再操作'); return; }
+    var m = (typeof messages !== 'undefined' && messages) ? messages[idx] : null;
+    if (!m || m.role !== 'assistant') return;
+
+    try { if (typeof cancelEdit === 'function') cancelEdit(); } catch (e) {}
+
+    editingIdx = idx;
+    try { if (typeof switchPage === 'function') switchPage('chat'); } catch (e1) {}
+
+    var input = document.getElementById('input');
+    if (input) {
+      var txt = textOf(m);
+      input.value = txt;
+      try {
+        if (typeof autoGrow === 'function') autoGrow();
+        input.focus();
+        input.setSelectionRange(txt.length, txt.length);
+      } catch (e2) {}
+    }
+    showBar();
+    say('改完点发送就行，不会重新生成', 3600);
+  }
+
+  function cancel() {
+    editingIdx = null;
+    hideBar();
+  }
+
+  function commit(newText) {
+    var idx = editingIdx;
+    editingIdx = null;
+    hideBar();
+
+    var m = (typeof messages !== 'undefined' && messages) ? messages[idx] : null;
+    if (!m || m.role !== 'assistant') return false;
+
+    m.content = newText;
+
+    /* 保留文件卡片 / 工具卡片，只把文字部分换成新的 */
+    var parts = m.parts || [];
+    var keep = [];
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i] && parts[i].type !== 'text') keep.push(parts[i]);
+    }
+    m.parts = [{ type: 'text', text: newText }].concat(keep);
+
+    try { if (typeof saveMessages === 'function') saveMessages(); } catch (e) {}
+
+    try {
+      var box = document.getElementById('messages');
+      var el = box ? box.querySelector('.msg[data-idx="' + idx + '"]') : null;
+      if (el && typeof renderMsg === 'function') el.replaceWith(renderMsg(m, idx));
+      else if (typeof renderMessages === 'function') renderMessages();
+    } catch (e2) {}
+
+    say('已修改', 2600);
+    return true;
+  }
+
+  window.__editAssistantStart = start;
+  window.__editAssistantCancel = cancel;
+  window.__editAssistantCommit = commit;
+  window.__editAssistantActive = function () { return editingIdx; };
+
+  /* ---------- 给 AI 消息加「编辑」按钮 ---------- */
+  function addBtn(el, msg) {
+    try {
+      if (!el || !msg || msg.role !== 'assistant') return;
+      var acts = el.querySelector('.msg-actions');
+      if (!acts || acts.querySelector('[data-act="editai"]')) return;
+      var b = document.createElement('button');
+      b.dataset.act = 'editai';
+      b.title = '编辑这条（只替换，不重新生成）';
+      b.innerHTML = '<svg class="ic"><use href="#i-edit"/></svg>';
+      var regen = acts.querySelector('[data-act="regen"]');
+      if (regen) acts.insertBefore(b, regen);
+      else acts.appendChild(b);
+    } catch (e) {}
+  }
+
+  if (typeof renderMsg === 'function' && !renderMsg.__editAiPatched) {
+    var _prev = renderMsg;
+    var _new = function (msg, idx) {
+      var el = _prev(msg, idx);
+      try { addBtn(el, msg); } catch (e) {}
+      return el;
+    };
+    _new.__editAiPatched = true;
+    try { renderMsg = _new; } catch (e) {}
+    try { window.renderMsg = _new; } catch (e) {}
+  }
+
+  /* ---------- 点击「编辑」 ---------- */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var btn = t.closest('.msg-actions button[data-act="editai"]');
+    if (!btn) return;
+    e.stopPropagation(); e.preventDefault();
+    var el = btn.closest('.msg');
+    if (!el || el.dataset.idx === undefined) return;
+    start(Number(el.dataset.idx));
+  }, true);
+
+  /* ---------- 拦截 send ---------- */
+  if (typeof send === 'function' && !send.__editAiPatched) {
+    var _origSend = send;
+    var _newSend = async function () {
+      if (editingIdx === null || editingIdx === undefined) return _origSend();
+      if (typeof streaming !== 'undefined' && streaming) return _origSend();
+
+      var input = document.getElementById('input');
+      var text = input ? String(input.value || '').trim() : '';
+      if (!text) { say('内容不能为空'); return; }
+
+      try { if (typeof cancelEdit === 'function') cancelEdit(); } catch (e) {}
+
+      if (input) input.value = '';
+      try { if (typeof autoGrow === 'function') autoGrow(); } catch (e2) {}
+
+      commit(text);
+    };
+    _newSend.__editAiPatched = true;
+    try { send = _newSend; } catch (e) {}
+    try { window.send = _newSend; } catch (e) {}
+  }
+
+  /* ---------- 重绑「发送」按钮（原版绑的是旧 send） ---------- */
+  function rebindSend() {
+    try {
+      var b = document.getElementById('btn-send');
+      if (b && b.dataset.eaRebound !== '1') {
+        b.dataset.eaRebound = '1';
+        b.onclick = send;
+      }
+    } catch (e) {}
+  }
+  rebindSend();
+  setTimeout(rebindSend, 300);
+  setTimeout(rebindSend, 1200);
+
+  /* ---------- 重绑「取消」按钮 ---------- */
+  function rebindCancel() {
+    try {
+      var b = document.getElementById('edit-cancel');
+      if (b && b.dataset.eaRebound !== '1') {
+        b.dataset.eaRebound = '1';
+        b.onclick = function () {
+          try { if (typeof cancelEdit === 'function') cancelEdit(); } catch (e) {}
+          if (editingIdx !== null) cancel();
+        };
+      }
+    } catch (e) {}
+  }
+  rebindCancel();
+  setTimeout(rebindCancel, 300);
+  setTimeout(rebindCancel, 1200);
+
+  /* ---------- 已有消息补按钮 ---------- */
+  function patchAll() {
+    try {
+      var nodes = document.querySelectorAll('#messages .msg.assistant');
+      Array.prototype.forEach.call(nodes, function (el) {
+        var i = Number(el.dataset.idx);
+        var m = (typeof messages !== 'undefined' && messages) ? messages[i] : null;
+        addBtn(el, m);
+      });
+    } catch (e) {}
+  }
+  patchAll();
+  setTimeout(patchAll, 300);
+  setTimeout(patchAll, 1200);
+
+  (function watch() {
+    var box = document.getElementById('messages');
+    if (!box || typeof MutationObserver === 'undefined') return;
+    var tmr = 0;
+    var mo = new MutationObserver(function () {
+      if (tmr) return;
+      tmr = setTimeout(function () { tmr = 0; patchAll(); }, 140);
+    });
+    try { mo.observe(box, { childList: true, subtree: false }); } catch (e) {}
+  })();
+})();
+
+/* ============================================================
+   20. 版本徽章
    ============================================================ */
 (function bumpVer() {
   function set() {
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v74';
+      el.textContent = 'v75';
     } catch (e) {}
   }
   set();
