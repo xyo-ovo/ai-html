@@ -44,6 +44,7 @@
 <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
 <symbol id="i-server" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
 <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 20.5l1.4-4.2a8.4 8.4 0 0 1-.9-3.8 8.4 8.4 0 0 1 8.4-8.4h.5a8.4 8.4 0 0 1 8.6 8.4z"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
 </defs>
 </svg>
 
@@ -52,7 +53,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v18</span>
+    <span class="ver">v19</span>
   </div>
   <div class="actions">
     <button id="btn-persona" class="icon-btn" title="AI 人设"><svg class="ic"><use href="#i-edit"/></svg></button>
@@ -70,7 +71,7 @@
         <button id="edit-cancel">取消</button>
       </div>
       <div class="composer-inner">
-        <button id="btn-tools" class="tool-btn" title="工具（MCP）"><svg class="ic"><use href="#i-wrench"/></svg></button>
+        <button id="btn-tools" class="tool-btn" title="工具（MCP）" style="display:none"></button>
         <textarea id="input" rows="1" placeholder="说点什么，或让它写个网页…"></textarea>
         <button id="btn-stop" class="stop-btn hidden" title="停止生成"><svg class="ic"><use href="#i-stop"/></svg></button>
         <button id="btn-send" title="发送"><svg class="ic"><use href="#i-send"/></svg></button>
@@ -83,12 +84,12 @@
     <div id="file-list" class="page-body"></div>
   </section>
 
-  <section id="page-tools" class="page">
-    <div class="page-head"><h2>工具</h2></div>
+  <section id="page-lore" class="page">
+    <div class="page-head"><h2>世界书</h2></div>
     <div class="page-body">
-      <div id="tool-list"></div>
-      <button id="btn-add-tool" class="ghost"><svg class="ic"><use href="#i-plus"/></svg>添加 MCP 服务器</button>
-      <p class="hint">支持 MCP 协议的 HTTP 服务器。添加并启用后，聊天时模型会自动调用其中合适的工具。</p>
+      <div id="lore-list"></div>
+      <button id="btn-add-lore" class="ghost"><svg class="ic"><use href="#i-plus"/></svg>添加条目</button>
+      <p class="hint">给 AI 的长期设定。留空关键词 = 每次对话都注入；写了关键词 = 你的话里出现该词时才注入。多个关键词用逗号隔开。</p>
     </div>
   </section>
 
@@ -100,6 +101,14 @@
         <div id="provider-list"></div>
         <button id="btn-add-provider" class="ghost"><svg class="ic"><use href="#i-plus"/></svg>添加供应商</button>
       </section>
+
+      <section class="field">
+        <label>工具（MCP）</label>
+        <div id="tool-list"></div>
+        <button id="btn-add-tool" class="ghost"><svg class="ic"><use href="#i-plus"/></svg>添加 MCP 服务器</button>
+        <p class="hint">支持 MCP 协议的 HTTP 服务器。添加并启用后，聊天时模型会自动调用其中合适的工具。</p>
+      </section>
+
       <section class="field">
         <label>系统提示词（可选）</label>
         <textarea id="sys-prompt" rows="3" placeholder="例：你是前端工程师，每次都输出完整单文件 HTML"></textarea>
@@ -126,7 +135,7 @@
 <nav id="tabbar">
   <button data-page="chat" class="on"><svg class="ic"><use href="#i-chat"/></svg><span>聊天</span></button>
   <button data-page="files"><svg class="ic"><use href="#i-folder"/></svg><span>文件</span></button>
-  <button data-page="tools"><svg class="ic"><use href="#i-wrench"/></svg><span>工具</span></button>
+  <button data-page="lore"><svg class="ic"><use href="#i-book"/></svg><span>世界书</span></button>
   <button data-page="settings"><svg class="ic"><use href="#i-gear"/></svg><span>设置</span></button>
 </nav>
 
@@ -166,6 +175,30 @@
       <div class="row between">
         <button id="pa-reset" class="ghost danger">恢复默认</button>
         <button id="pa-save">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="lore-edit" class="overlay hidden">
+  <div class="sheet">
+    <div class="sheet-head"><h2 id="le-title">添加条目</h2><button class="close" data-close="lore-edit"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="sheet-body">
+      <section class="field">
+        <label>名称</label>
+        <input id="le-name" placeholder="例如：主角设定" />
+      </section>
+      <section class="field">
+        <label>关键词（逗号分隔，留空 = 常驻）</label>
+        <input id="le-keywords" placeholder="例如：小明,主角" />
+      </section>
+      <section class="field">
+        <label>内容</label>
+        <textarea id="le-content" rows="6" placeholder="写进 AI 设定的内容……"></textarea>
+      </section>
+      <div class="row between">
+        <button id="le-delete" class="ghost danger" hidden>删除</button>
+        <button id="le-save">保存</button>
       </div>
     </div>
   </div>
@@ -244,6 +277,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v18.js"></script>
+<script src="app.v19.js"></script>
 </body>
 </html>
