@@ -101,29 +101,6 @@
 
   #card-diag{font-size:11px;color:var(--fg3);font-family:var(--font-mono);line-height:1.6;word-break:break-all;opacity:.8}
 
-  /* ===== 角色卡导入按钮：input 透明铺满，点哪都是点 input 本身 ===== */
-  .file-pick-btn{
-    position:relative;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;gap:8px;
-    border:1.5px solid var(--line2);border-radius:16px;padding:14px 18px;
-    font-size:14px;font-weight:500;color:var(--fg2);
-    cursor:pointer;
-    transition:border-color .18s ease,color .18s ease,background-color .18s ease;
-    -webkit-tap-highlight-color:transparent;
-    touch-action:manipulation;
-  }
-  .file-pick-btn:hover{border-color:var(--acc);color:var(--acc);background:var(--acc-soft)}
-  .file-pick-btn:active{background:var(--acc-soft)}
-  .file-pick-btn .ic{width:16px;height:16px;flex:0 0 auto;pointer-events:none}
-  .file-pick-btn > span{pointer-events:none}
-  .file-pick-btn input[type="file"]{
-    position:absolute;left:0;top:0;width:100%;height:100%;
-    opacity:0;cursor:pointer;z-index:5;
-    font-size:100px;
-    -webkit-appearance:none;appearance:none;
-    border:0;padding:0;margin:0;background:transparent;
-  }
-
   body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;inset:14px;border:2px dashed var(--acc);border-radius:26px;display:grid;place-items:center;font-size:15px;font-weight:600;color:var(--acc);background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:300;pointer-events:none}
   @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}}
 </style>
@@ -174,7 +151,7 @@
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">AI HTML 工坊</span>
-    <span class="ver">v39</span>
+    <span class="ver">v40</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -232,16 +209,17 @@
     <div class="page-body">
       <div id="card-list"></div>
 
-      <div class="file-pick-btn" id="btn-import-card">
-        <svg class="ic"><use href="#i-upload"/></svg>
-        <span>导入角色卡（PNG / JSON）</span>
-        <input type="file" id="pick-card" multiple
-          onchange="try{if(window.__cardFixImport)window.__cardFixImport(this.files)}catch(e){}" />
-      </div>
+      <button type="button" id="btn-import-card" class="ghost">
+        <svg class="ic"><use href="#i-upload"/></svg>导入角色卡（PNG / JSON）
+      </button>
 
-      <p class="hint">点上面那块区域就能选文件（在安卓上也是直接点它本身）。导入后只存在这张卡里，<b>不会动你的全局世界书</b>。</p>
+      <p class="hint">导入后只存在这张卡里，<b>不会动你的全局世界书</b>。卡里的世界书、正则都能在这里查看和开关；需要时可以把某张卡的世界书复制成 ST 格式，或手动导入全局。</p>
       <p id="card-diag">诊断加载中…</p>
     </div>
+
+    <input type="file" id="pick-card" multiple
+      onchange="try{if(window.__cardFixImport)window.__cardFixImport(this.files)}catch(e){}"
+      style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap;border:0" />
   </section>
 
   <section id="page-lore" class="page">
