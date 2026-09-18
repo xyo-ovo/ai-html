@@ -1,7 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   合并了原来的 card-fix.js + patch3.js + patch4.js + patch5.js + patch6.js
-   以后只维护这一个文件。
+   （原 card-fix + patch3~6 合并而成）
 
    模块顺序（后面的会包装前面的，别乱动）：
      1  样式总注入
@@ -20,6 +19,10 @@
     14  角色卡详情折叠 + 弹层高度
     15  角色卡工具描述软化
     16  版本徽章
+
+   v59 修：角色卡弹层被 flex stretch 拉满
+     · .sheet 补 align-self:center + flex:0 1 auto（关键）
+     · fitCardSheet 改成「先松开、量自然高度、超了才限」
    ============================================================ */
 
 /* ============================================================
@@ -99,17 +102,39 @@
     '.msg-branch .br-n{font-variant-numeric:tabular-nums;padding:0 2px}',
     '.msg-branch .br-tag{font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:2px}',
 
-    /* ---- 角色卡详情 ---- */
+    /* ---- 角色卡详情：弹层不再被拉伸 ---- */
     '#card-view{align-items:center !important;justify-content:center !important}',
-    '#card-view .sheet{height:auto !important;min-height:0 !important;max-height:88vh !important;display:flex !important;flex-direction:column !important;padding-bottom:0 !important;margin-bottom:0 !important}',
-    '#card-view .sheet-body{flex:0 1 auto !important;height:auto !important;min-height:0 !important;max-height:none !important;padding-bottom:0 !important;margin-bottom:0 !important;-webkit-overflow-scrolling:touch}',
+    '#card-view .sheet{',
+    '  height:auto !important;',
+    '  min-height:0 !important;',
+    '  max-height:88vh !important;',
+    '  align-self:center !important;',   /* ← 关键：钉住自己，拒绝 flex stretch */
+    '  flex:0 1 auto !important;',       /* ← 不长大、可缩小 */
+    '  display:flex !important;',
+    '  flex-direction:column !important;',
+    '  padding-bottom:0 !important;',
+    '  margin-bottom:0 !important;',
+    '}',
+    '#card-view .sheet-body{',
+    '  flex:0 1 auto !important;',
+    '  height:auto !important;',
+    '  min-height:0 !important;',
+    '  max-height:none !important;',
+    '  padding-bottom:0 !important;',
+    '  margin-bottom:0 !important;',
+    '  -webkit-overflow-scrolling:touch;',
+    '}',
     '#card-view .sheet-body > *:last-child,#card-view .cv-sec:last-child,#card-view .cv-sec:last-child > *:last-child,#card-view .cv-field:last-child,#card-view .cv-entry:last-child{margin-bottom:0 !important;padding-bottom:0 !important}',
     '#page-card .page-body > *:last-child{margin-bottom:0 !important}',
+
+    /* ---- 章节折叠 ---- */
     '.cv-sec > h3{cursor:pointer;user-select:none;-webkit-user-select:none;position:relative;padding-left:15px}',
     '.cv-sec > h3::before{content:"";position:absolute;left:0;top:50%;width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;transform:translateY(-50%) rotate(90deg);transition:transform .2s cubic-bezier(.16,1,.3,1);opacity:.5}',
     '.cv-sec.folded > h3::before{transform:translateY(-50%) rotate(0deg)}',
     '.cv-sec.folded > *:not(h3){display:none !important}',
     '.cv-sec > h3 .cv-count{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:5px}',
+
+    /* ---- 世界书 / 正则条目：书脊样式 ---- */
     '.cv-entry{border-radius:4px 14px 14px 4px !important;padding:12px 14px 12px 16px !important;background:var(--bg2) !important;border:1px solid var(--line2) !important;border-left:3px solid color-mix(in srgb,var(--acc) 55%,transparent) !important;margin-bottom:9px !important;transition:border-color .2s ease,background-color .2s ease !important}',
     '.cv-entry:hover{border-color:color-mix(in srgb,var(--acc) 35%,var(--line2)) !important;border-left-color:var(--acc) !important;background:color-mix(in srgb,var(--acc) 3.5%,var(--bg2)) !important}',
     '.cv-entry .eh{cursor:pointer;position:relative;padding-right:18px}',
@@ -117,15 +142,18 @@
     '.cv-entry.folded .eh::after{transform:translateY(-50%) rotate(0deg)}',
     '.cv-entry .ec{transition:max-height .28s cubic-bezier(.16,1,.3,1),opacity .2s ease,padding .22s ease;overflow:hidden}',
     '.cv-entry.folded .ec{max-height:0 !important;opacity:0;padding-top:0;padding-bottom:0;margin:0}',
+
+    /* ---- 长字段折叠 ---- */
     '.cv-field pre.clamp{max-height:82px;overflow:hidden;position:relative;cursor:pointer}',
     '.cv-field pre.clamp::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(transparent,var(--bg3));pointer-events:none;border-radius:0 0 12px 12px}',
     '.cv-field pre.clamp::before{content:"点开看全部";position:absolute;right:10px;bottom:6px;font-size:10.5px;color:var(--acc);opacity:.9;z-index:1;font-family:var(--font-sans)}',
 
-    /* ---- 列表视觉 ---- */
+    /* ---- 输入区对齐 ---- */
     '.composer-inner{display:flex;align-items:center !important}',
     '.composer-inner > button,.composer-inner > .tool-btn{align-self:center !important;flex:0 0 auto;margin-top:0 !important;margin-bottom:0 !important}',
     '.composer-inner > textarea{align-self:center !important}',
 
+    /* ---- 列表视觉 ---- */
     '#card-list .card-item{position:relative;border-radius:20px !important;padding:16px 40px 16px 18px !important;background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 7%,var(--bg2)) 0%,var(--bg2) 58%) !important;border:1px solid color-mix(in srgb,var(--acc) 20%,var(--line2)) !important;transition:transform .22s cubic-bezier(.16,1,.3,1),box-shadow .24s ease,border-color .2s ease !important}',
     '#card-list .card-item:hover{transform:translateY(-2px) !important;border-color:color-mix(in srgb,var(--acc) 48%,var(--line2)) !important;box-shadow:0 14px 30px -16px color-mix(in srgb,var(--acc) 55%,transparent) !important}',
     '#card-list .card-item::after{content:"›";position:absolute;right:15px;top:50%;transform:translateY(-50%) translateX(-4px);font-size:22px;line-height:1;color:var(--acc);opacity:0;transition:opacity .2s ease,transform .22s cubic-bezier(.16,1,.3,1);pointer-events:none}',
@@ -198,7 +226,6 @@
   }
   window.__cardFixSay = say;
 
-  /* 清洗畸形的世界书 / 正则条目，防止 parseCardJson 抛错 */
   function sanitize(json) {
     try {
       var d = (json && (json.data || json)) || {};
@@ -830,7 +857,6 @@
     document.head.appendChild(l);
   }
 
-  /* --- 公式 --- */
   var KATEX_CSS = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
   var KATEX_JS = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
   var KATEX_AR = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js';
@@ -879,7 +905,6 @@
     try { window.textEl = _newTextEl; } catch (e) {}
   }
 
-  /* --- Mermaid --- */
   var MERMAID_JS = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js';
   var mermaidReady = false;
 
@@ -1190,7 +1215,7 @@
 })();
 
 /* ============================================================
-   12. 上下文指示环（套在 + 按钮外面）
+   12. 上下文指示环
    ============================================================ */
 (function ctxRing() {
   'use strict';
@@ -1334,48 +1359,55 @@
 })();
 
 /* ============================================================
-   14. 角色卡详情：折叠 + 弹层高度
+   14. 角色卡详情：折叠 + 弹层高度（v59 重做）
    ============================================================ */
 (function cardView() {
   'use strict';
 
+  /* ------------------------------------------------------------
+     弹层高度：先全部松开 → 让浏览器按内容算 → 超了才限高
+     ------------------------------------------------------------ */
   function fitCardSheet() {
     try {
       var overlay = document.getElementById('card-view');
       if (!overlay || overlay.classList.contains('hidden')) return;
+
       var sheet = overlay.querySelector('.sheet');
       var body = document.getElementById('cv-body');
       if (!sheet || !body) return;
       var head = sheet.querySelector('.sheet-head');
 
-      sheet.style.removeProperty('height');
-      sheet.style.removeProperty('min-height');
-      sheet.style.removeProperty('max-height');
-      body.style.removeProperty('height');
-      body.style.removeProperty('min-height');
-      body.style.removeProperty('max-height');
-
-      var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-      var cap = Math.round(vh * 0.88);
-      var headH = head ? head.offsetHeight : 0;
-      var bodyH = Math.max(body.scrollHeight, body.offsetHeight);
-      var need = headH + bodyH;
-
-      sheet.style.setProperty('align-self', 'center', 'important');
+      /* ① 松开一切高度限制，并钉住自己不被拉伸 */
+      sheet.style.setProperty('height', 'auto', 'important');
       sheet.style.setProperty('min-height', '0', 'important');
-      sheet.style.setProperty('max-height', cap + 'px', 'important');
-      sheet.style.setProperty('height', Math.min(need, cap) + 'px', 'important');
+      sheet.style.setProperty('max-height', 'none', 'important');
+      sheet.style.setProperty('align-self', 'center', 'important');
+      sheet.style.setProperty('flex', '0 1 auto', 'important');
       sheet.style.setProperty('padding-bottom', '0', 'important');
       sheet.style.setProperty('margin-bottom', '0', 'important');
 
-      if (need <= cap) {
-        body.style.setProperty('max-height', 'none', 'important');
-        body.style.setProperty('overflow-y', 'visible', 'important');
-      } else {
+      body.style.setProperty('height', 'auto', 'important');
+      body.style.setProperty('min-height', '0', 'important');
+      body.style.setProperty('max-height', 'none', 'important');
+      body.style.setProperty('flex', '0 1 auto', 'important');
+      body.style.setProperty('padding-bottom', '0', 'important');
+      body.style.setProperty('margin-bottom', '0', 'important');
+      body.style.setProperty('overflow-y', 'visible', 'important');
+
+      /* ② 量自然高度 */
+      var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+      var cap = Math.round(vh * 0.88);
+      var natural = Math.ceil(sheet.getBoundingClientRect().height);
+
+      /* ③ 只有超了才限高，没超就保持贴住内容 */
+      if (natural > cap) {
+        var headH = head ? head.offsetHeight : 0;
+        sheet.style.setProperty('max-height', cap + 'px', 'important');
         body.style.setProperty('max-height', Math.max(0, cap - headH) + 'px', 'important');
         body.style.setProperty('overflow-y', 'auto', 'important');
       }
 
+      /* ④ 把最后一项的尾巴切掉 */
       var kids = body.children;
       if (kids && kids.length) {
         var last = kids[kids.length - 1];
@@ -1400,12 +1432,17 @@
     setTimeout(fitCardSheet, 200);
     setTimeout(fitCardSheet, 500);
   }
+  window.__cardFitSoon = fitSoon;
 
+  /* ------------------------------------------------------------
+     折叠
+     ------------------------------------------------------------ */
   function enhanceCardView() {
     try {
       var body = document.getElementById('cv-body');
       if (!body) return;
 
+      /* ---- 章节 ---- */
       var secs = body.querySelectorAll('.cv-sec');
       Array.prototype.forEach.call(secs, function (sec) {
         var h3 = sec.querySelector('h3');
@@ -1429,6 +1466,7 @@
         });
       });
 
+      /* ---- 条目正文 ---- */
       var entries = body.querySelectorAll('.cv-entry');
       Array.prototype.forEach.call(entries, function (en) {
         if (en.dataset.p6 === '1') return;
@@ -1444,6 +1482,7 @@
         });
       });
 
+      /* ---- 长字段 ---- */
       var pres = body.querySelectorAll('.cv-field pre');
       Array.prototype.forEach.call(pres, function (pre) {
         if (pre.dataset.p6 === '1') return;
@@ -1478,6 +1517,7 @@
     setTimeout(bind, 600);
     setTimeout(bind, 2000);
 
+    /* 点角色卡列表项 → 打开弹层，密集重测 */
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -1495,6 +1535,7 @@
 
     window.addEventListener('resize', function () { setTimeout(fitCardSheet, 80); }, { passive: true });
 
+    /* 关闭弹层时清掉写死的样式，下次打开重新量 */
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -1507,10 +1548,12 @@
               sheet.style.removeProperty('height');
               sheet.style.removeProperty('max-height');
               sheet.style.removeProperty('align-self');
+              sheet.style.removeProperty('flex');
             }
             if (body) {
               body.style.removeProperty('max-height');
               body.style.removeProperty('overflow-y');
+              body.style.removeProperty('flex');
             }
           } catch (err) {}
         }, 260);
@@ -1520,7 +1563,7 @@
 })();
 
 /* ============================================================
-   15. 角色卡工具描述软化（读到内容 ≠ 要扮演）
+   15. 角色卡工具描述软化
    ============================================================ */
 (function softenCardTool() {
   if (typeof buildToolsPayload !== 'function') return;
@@ -1549,17 +1592,14 @@
 })();
 
 /* ============================================================
-   16. 版本徽章：直接读 index.html 里 patch.js 的 ?v=
+   16. 版本徽章
    ============================================================ */
 (function bumpVer() {
   function set() {
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      var s = document.querySelector('script[src*="patch.js"]');
-      var m = s && String(s.src || '').match(/[?&]v=([^&]+)/);
-      var v = m ? m[1] : '57';
-      if (el.textContent !== 'v' + v) el.textContent = 'v' + v;
+      el.textContent = 'v59';
     } catch (e) {}
   }
   set();
