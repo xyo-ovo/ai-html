@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v61：弹层 CSS 双保险（同时写进 index.html 内联样式）
+   v66：删掉"写死弹层高度"和"折叠"两段
    ============================================================ */
 
 /* ============================================================
@@ -80,55 +80,19 @@
     '.msg-branch .br-n{font-variant-numeric:tabular-nums;padding:0 2px}',
     '.msg-branch .br-tag{font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:2px}',
 
-    /* ---- 角色卡详情：弹层高度 = 内容高度（v61 加强） ---- */
-    '#card-view{',
-    '  align-items:center !important;',
-    '  justify-content:center !important;',
-    '}',
-    '#card-view .sheet{',
-    '  align-self:center !important;',
-    '  height:auto !important;',
-    '  max-height:88vh !important;',
-    '  min-height:0 !important;',
-    '  flex:0 0 auto !important;',
-    '  padding-bottom:0 !important;',
-    '  margin-bottom:0 !important;',
-    '  overflow:hidden !important;',
-    '  display:flex !important;',
-    '  flex-direction:column !important;',
-    '}',
-    '#card-view .sheet-body{',
-    '  flex:0 1 auto !important;',
-    '  height:auto !important;',
-    '  min-height:0 !important;',
-    '  max-height:none !important;',
-    '  padding-bottom:0 !important;',
-    '  margin-bottom:0 !important;',
-    '  -webkit-overflow-scrolling:touch;',
-    '}',
+    /* ---- 角色卡详情：弹层贴合内容（不折叠、不写死高度） ---- */
+    '#card-view{align-items:center !important;justify-content:center !important}',
+    '#card-view .sheet{align-self:center !important;height:auto !important;max-height:88vh !important;min-height:0 !important;flex:0 0 auto !important;padding-bottom:0 !important;margin-bottom:0 !important;display:flex !important;flex-direction:column !important;overflow:hidden !important}',
+    '#card-view .sheet-body{flex:0 1 auto !important;height:auto !important;min-height:0 !important;max-height:none !important;padding-bottom:0 !important;margin-bottom:0 !important;-webkit-overflow-scrolling:touch}',
     '#card-view .sheet-body > *:last-child,#card-view .cv-sec:last-child,#card-view .cv-sec:last-child > *:last-child,#card-view .cv-field:last-child,#card-view .cv-entry:last-child{margin-bottom:0 !important;padding-bottom:0 !important}',
     '#page-card .page-body > *:last-child{margin-bottom:0 !important}',
 
-    /* ---- 章节折叠 ---- */
-    '.cv-sec > h3{cursor:pointer;user-select:none;-webkit-user-select:none;position:relative;padding-left:15px}',
-    '.cv-sec > h3::before{content:"";position:absolute;left:0;top:50%;width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;transform:translateY(-50%) rotate(90deg);transition:transform .2s cubic-bezier(.16,1,.3,1);opacity:.5}',
-    '.cv-sec.folded > h3::before{transform:translateY(-50%) rotate(0deg)}',
-    '.cv-sec.folded > *:not(h3){display:none !important}',
+    /* ---- 条目数徽章 ---- */
     '.cv-sec > h3 .cv-count{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:5px}',
 
     /* ---- 世界书 / 正则条目：书脊样式 ---- */
     '.cv-entry{border-radius:4px 14px 14px 4px !important;padding:12px 14px 12px 16px !important;background:var(--bg2) !important;border:1px solid var(--line2) !important;border-left:3px solid color-mix(in srgb,var(--acc) 55%,transparent) !important;margin-bottom:9px !important;transition:border-color .2s ease,background-color .2s ease !important}',
     '.cv-entry:hover{border-color:color-mix(in srgb,var(--acc) 35%,var(--line2)) !important;border-left-color:var(--acc) !important;background:color-mix(in srgb,var(--acc) 3.5%,var(--bg2)) !important}',
-    '.cv-entry .eh{cursor:pointer;position:relative;padding-right:18px}',
-    '.cv-entry .eh::after{content:"";position:absolute;right:2px;top:50%;width:0;height:0;border-left:4px solid currentColor;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent;transform:translateY(-50%) rotate(90deg);transition:transform .2s ease;opacity:.4}',
-    '.cv-entry.folded .eh::after{transform:translateY(-50%) rotate(0deg)}',
-    '.cv-entry .ec{transition:max-height .28s cubic-bezier(.16,1,.3,1),opacity .2s ease,padding .22s ease;overflow:hidden}',
-    '.cv-entry.folded .ec{max-height:0 !important;opacity:0;padding-top:0;padding-bottom:0;margin:0}',
-
-    /* ---- 长字段折叠 ---- */
-    '.cv-field pre.clamp{max-height:82px;overflow:hidden;position:relative;cursor:pointer}',
-    '.cv-field pre.clamp::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(transparent,var(--bg3));pointer-events:none;border-radius:0 0 12px 12px}',
-    '.cv-field pre.clamp::before{content:"点开看全部";position:absolute;right:10px;bottom:6px;font-size:10.5px;color:var(--acc);opacity:.9;z-index:1;font-family:var(--font-sans)}',
 
     /* ---- 输入区对齐 ---- */
     '.composer-inner{display:flex;align-items:center !important}',
@@ -1341,83 +1305,18 @@
 })();
 
 /* ============================================================
-   14. 角色卡详情：折叠 + 弹层高度（v61 加强）
+   14. 角色卡详情（v66：不折叠、不写死高度）
+   只保留"条目数"徽章；弹层高度完全交给 CSS
    ============================================================ */
 (function cardView() {
   'use strict';
-
-  function fitCardSheet() {
-    try {
-      var overlay = document.getElementById('card-view');
-      if (!overlay || overlay.classList.contains('hidden')) return;
-
-      var sheet = overlay.querySelector('.sheet');
-      var body = document.getElementById('cv-body');
-      if (!sheet || !body) return;
-      var head = sheet.querySelector('.sheet-head');
-
-      var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-      var cap = Math.round(vh * 0.88);
-
-      var headH = head ? head.offsetHeight : 0;
-      var bodyH = body.scrollHeight;
-      var need = headH + bodyH;
-
-      sheet.style.removeProperty('height');
-      sheet.style.removeProperty('min-height');
-      sheet.style.removeProperty('max-height');
-
-      var finalH = Math.min(need, cap);
-      sheet.style.setProperty('height', finalH + 'px', 'important');
-      sheet.style.setProperty('min-height', '0', 'important');
-      sheet.style.setProperty('max-height', cap + 'px', 'important');
-      sheet.style.setProperty('align-self', 'center', 'important');
-      sheet.style.setProperty('flex', '0 0 auto', 'important');
-      sheet.style.setProperty('padding-bottom', '0', 'important');
-      sheet.style.setProperty('margin-bottom', '0', 'important');
-
-      if (need > cap) {
-        body.style.setProperty('max-height', Math.max(0, cap - headH) + 'px', 'important');
-        body.style.setProperty('overflow-y', 'auto', 'important');
-      } else {
-        body.style.setProperty('max-height', 'none', 'important');
-        body.style.setProperty('overflow-y', 'visible', 'important');
-      }
-      body.style.setProperty('min-height', '0', 'important');
-      body.style.setProperty('padding-bottom', '0', 'important');
-      body.style.setProperty('margin-bottom', '0', 'important');
-
-      var kids = body.children;
-      if (kids && kids.length) {
-        var last = kids[kids.length - 1];
-        if (last && last.style) {
-          last.style.marginBottom = '0';
-          last.style.paddingBottom = '0';
-          var inner = last.lastElementChild;
-          if (inner && inner.style) {
-            inner.style.marginBottom = '0';
-            inner.style.paddingBottom = '0';
-          }
-        }
-      }
-    } catch (e) {}
-  }
-  window.__cardFit = fitCardSheet;
-
-  function fitSoon() {
-    fitCardSheet();
-    requestAnimationFrame(fitCardSheet);
-    setTimeout(fitCardSheet, 60);
-    setTimeout(fitCardSheet, 200);
-    setTimeout(fitCardSheet, 500);
-  }
-  window.__cardFitSoon = fitSoon;
 
   function enhanceCardView() {
     try {
       var body = document.getElementById('cv-body');
       if (!body) return;
 
+      /* 章节标题加个"条目数"小徽章，纯粹是信息，不带任何交互 */
       var secs = body.querySelectorAll('.cv-sec');
       Array.prototype.forEach.call(secs, function (sec) {
         var h3 = sec.querySelector('h3');
@@ -1432,43 +1331,15 @@
           var btns = h3.querySelector('.cv-btns');
           if (btns) h3.insertBefore(badge, btns); else h3.appendChild(badge);
         }
-        if (sec.querySelectorAll('.cv-entry').length > 4) sec.classList.add('folded');
-
-        h3.addEventListener('click', function (e) {
-          if (e.target.closest && e.target.closest('.cv-btns')) return;
-          sec.classList.toggle('folded');
-          setTimeout(fitCardSheet, 220);
-        });
       });
 
-      var entries = body.querySelectorAll('.cv-entry');
-      Array.prototype.forEach.call(entries, function (en) {
-        if (en.dataset.p6 === '1') return;
-        var eh = en.querySelector('.eh'), ec = en.querySelector('.ec');
-        if (!eh || !ec) return;
-        en.dataset.p6 = '1';
-        if ((ec.textContent || '').trim().length < 90) return;
-        en.classList.add('folded');
-        eh.addEventListener('click', function (e) {
-          e.stopPropagation();
-          en.classList.toggle('folded');
-          setTimeout(fitCardSheet, 320);
-        });
+      /* 清掉任何可能残留的折叠 / 截断 class */
+      Array.prototype.forEach.call(body.querySelectorAll('.folded'), function (el) {
+        el.classList.remove('folded');
       });
-
-      var pres = body.querySelectorAll('.cv-field pre');
-      Array.prototype.forEach.call(pres, function (pre) {
-        if (pre.dataset.p6 === '1') return;
-        pre.dataset.p6 = '1';
-        if ((pre.textContent || '').trim().length < 200) return;
-        pre.classList.add('clamp');
-        pre.addEventListener('click', function () {
-          pre.classList.toggle('clamp');
-          setTimeout(fitCardSheet, 60);
-        });
+      Array.prototype.forEach.call(body.querySelectorAll('pre.clamp'), function (el) {
+        el.classList.remove('clamp');
       });
-
-      fitSoon();
     } catch (e) {}
   }
   window.__cardFold = enhanceCardView;
@@ -1482,54 +1353,22 @@
       var tmr = 0;
       var mo = new MutationObserver(function () {
         if (tmr) return;
-        tmr = setTimeout(function () { tmr = 0; enhanceCardView(); fitSoon(); }, 40);
+        tmr = setTimeout(function () { tmr = 0; enhanceCardView(); }, 40);
       });
       try { mo.observe(body, { childList: true, subtree: false }); } catch (e) {}
     }
     bind();
     setTimeout(bind, 600);
     setTimeout(bind, 2000);
-
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
       if (t.closest('#card-list')) {
-        fitSoon();
-        setTimeout(fitCardSheet, 700);
-        setTimeout(fitCardSheet, 1100);
         setTimeout(enhanceCardView, 60);
         setTimeout(enhanceCardView, 260);
       }
     }, true);
-
     enhanceCardView();
-    fitSoon();
-
-    window.addEventListener('resize', function () { setTimeout(fitCardSheet, 80); }, { passive: true });
-
-    document.addEventListener('click', function (e) {
-      var t = e.target;
-      if (!t || !t.closest) return;
-      if (t.closest('[data-close="card-view"]')) {
-        setTimeout(function () {
-          try {
-            var sheet = document.querySelector('#card-view .sheet');
-            var body = document.getElementById('cv-body');
-            if (sheet) {
-              sheet.style.removeProperty('height');
-              sheet.style.removeProperty('max-height');
-              sheet.style.removeProperty('align-self');
-              sheet.style.removeProperty('flex');
-            }
-            if (body) {
-              body.style.removeProperty('max-height');
-              body.style.removeProperty('overflow-y');
-              body.style.removeProperty('flex');
-            }
-          } catch (err) {}
-        }, 260);
-      }
-    }, true);
   })();
 })();
 
@@ -1570,7 +1409,7 @@
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v61';
+      el.textContent = 'v66';
     } catch (e) {}
   }
   set();
