@@ -1,14 +1,29 @@
 /* ============================================================
-   patch3.js v5
+   patch3.js v6
    1) 搜索重做（结果列表点选）
    2) 修竖排（覆盖 .find-bar button 误伤 .find-row）
    3) 正文字体上传（存 IndexedDB，FontFace 加载，只作用正文）
    4) 分支对话（重新生成时保留旧版本，左右箭头切换）
-   5) 应用改名 → 机语工坊（包装 sessionPersona，不动 app.v29.js）
+   5) 应用改名 → 机语工坊
+   6) 动态加载 patch4.js（公式 / 图表 / 引用 / 气泡 / 进度条 / AI 标题）
 
    —— 本文件在 app.v29.js / extra.v4.js / card-fix.js 之后加载，
       它们顶层的 function 声明都可以安全覆盖。
    ============================================================ */
+
+/* ---------- -1. 尽早把 patch4.js 拉起来 ---------- */
+(function loadPatch4() {
+  try {
+    if (document.querySelector('script[src="patch4.js"]')) return;
+    var s = document.createElement('script');
+    s.src = 'patch4.js';
+    s.async = false;
+    s.onerror = function () {
+      try { console.warn('[patch3] patch4.js 加载失败（网络？）'); } catch (e) {}
+    };
+    (document.head || document.documentElement).appendChild(s);
+  } catch (e) {}
+})();
 
 /* ---------- 0. 注入覆盖样式 ---------- */
 (function injectFindFix() {
@@ -46,15 +61,12 @@
   var OLD = 'AI HTML 工坊';
   var NEW = '机语工坊';
 
-  /* 包装 sessionPersona：名字为空或还是旧名时，返回新名 */
   if (typeof sessionPersona === 'function') {
     var _origSP = sessionPersona;
     var _newSP = function () {
       var p = _origSP();
       try {
-        if (!p || !p.name || p.name === OLD) {
-          if (p) p.name = NEW;
-        }
+        if (!p || !p.name || p.name === OLD) { if (p) p.name = NEW; }
       } catch (e) {}
       return p;
     };
@@ -62,12 +74,9 @@
     try { window.sessionPersona = _newSP; } catch (e) {}
   }
 
-  /* 把已经渲染出去的旧名字刷掉 */
   function refresh() {
     try { if (typeof renderBrand === 'function') renderBrand(); } catch (e) {}
-    try {
-      if (!document.title || document.title === OLD) document.title = NEW;
-    } catch (e) {}
+    try { if (!document.title || document.title === OLD) document.title = NEW; } catch (e) {}
     var nm = document.getElementById('brand-name');
     if (nm && nm.textContent.trim() === OLD) nm.textContent = NEW;
     var ph = document.getElementById('pa-name');
@@ -83,7 +92,7 @@
 (function bumpVer() {
   try {
     var v = document.querySelector('.ver');
-    if (v) v.textContent = 'v49';
+    if (v) v.textContent = 'v50';
   } catch (e) {}
 })();
 
