@@ -8,6 +8,13 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23B08968'/%3E%3Ccircle cx='9' cy='9.5' r='1.7' fill='%23FFFDFA'/%3E%3Ccircle cx='14.6' cy='8.6' r='1.7' fill='%23FFFDFA'/%3E%3Ccircle cx='10' cy='14.6' r='1.7' fill='%23FFFDFA'/%3E%3C/svg%3E" />
 <script>try{var t=localStorage.getItem('aih.themeMode')||localStorage.getItem('aih.theme');if(t!=='light'&&t!=='dark'&&t!=='auto')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}</script>
 <link rel="stylesheet" href="style.v17.css" />
+<style>
+  .brand .avatar{
+    width:26px;height:26px;border-radius:9px;display:grid;place-items:center;
+    font-size:15px;line-height:1;background:var(--bg3);flex:0 0 auto;
+  }
+  .welcome .w-icon{font-size:30px;line-height:1}
+</style>
 </head>
 <body>
 
@@ -43,12 +50,12 @@
 <header id="topbar">
   <div class="brand">
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
-    <svg class="ic logo"><use href="#i-palette"/></svg>
-    <span class="title">AI HTML 工坊</span>
-    <span class="ver">v17</span>
+    <span class="avatar" id="brand-avatar">🎨</span>
+    <span class="title" id="brand-name">AI HTML 工坊</span>
+    <span class="ver">v18</span>
   </div>
   <div class="actions">
-    <button id="btn-theme" class="icon-btn" title="切换主题"><svg class="ic"><use href="#i-moon"/></svg></button>
+    <button id="btn-persona" class="icon-btn" title="AI 人设"><svg class="ic"><use href="#i-edit"/></svg></button>
   </div>
 </header>
 
@@ -136,6 +143,34 @@
   </aside>
 </div>
 
+<div id="persona" class="overlay hidden">
+  <div class="sheet">
+    <div class="sheet-head"><h2>AI 人设</h2><button class="close" data-close="persona"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="sheet-body">
+      <section class="field">
+        <label>头像（一个 emoji）</label>
+        <input id="pa-avatar" maxlength="4" placeholder="🎨" />
+      </section>
+      <section class="field">
+        <label>名字</label>
+        <input id="pa-name" placeholder="AI HTML 工坊" />
+      </section>
+      <section class="field">
+        <label>人设 / 系统提示词</label>
+        <textarea id="pa-bio" rows="5" placeholder="例：你是资深前端工程师，说话简洁，代码永远给完整可运行的单文件 HTML……"></textarea>
+      </section>
+      <section class="field">
+        <label>开场白（新对话时的欢迎语）</label>
+        <textarea id="pa-greeting" rows="3" placeholder="留空则用默认文案"></textarea>
+      </section>
+      <div class="row between">
+        <button id="pa-reset" class="ghost danger">恢复默认</button>
+        <button id="pa-save">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="preview" class="overlay hidden">
   <div class="preview-bar">
     <span id="pv-name" class="pv-name"></span>
@@ -209,6 +244,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v15.js"></script>
+<script src="app.v18.js"></script>
 </body>
 </html>
