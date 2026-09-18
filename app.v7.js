@@ -40,6 +40,8 @@ let messages = LS.messages;
 let streaming = false;
 let abortCtrl = null;
 let curFile = null;
+let autoScroll = true;
+let firstRender = true;
 
 /* ---------- 主题 ---------- */
 const THEME_COLORS = {
@@ -153,15 +155,16 @@ function parseSegments(content) {
 
 /* ---------- 消息渲染 ---------- */
 const $msgs = $('#messages');
+const $chat = $('#chat');
 
 function scrollDown() {
-  const c = $('#chat');
-  requestAnimationFrame(() => { c.scrollTop = c.scrollHeight; });
+  requestAnimationFrame(() => { $chat.scrollTop = $chat.scrollHeight; });
 }
 function nearBottom() {
-  const c = $('#chat');
-  return c.scrollHeight - c.scrollTop - c.clientHeight < 160;
+  return $chat.scrollHeight - $chat.scrollTop - $chat.clientHeight < 80;
 }
+$chat.addEventListener('scroll', () => { autoScroll = nearBottom(); }, { passive: true });
+
 function fmtTime(t) {
   if (!t) return '';
   const d = new Date(t), now = new Date();
@@ -265,15 +268,24 @@ function welcomeEl() {
     <p>先去右上角设置里添加 API（DeepSeek / OpenAI / Kimi / 智谱等都可以），然后直接说「帮我写个 xxx 网页」。<br>生成的 HTML 会直接变成文件卡片，点开全屏预览。</p>`;
   return d;
 }
-function renderMessages() {
-  const stick = nearBottom();
+function renderMessages(newIdx) {
   $msgs.innerHTML = '';
   if (!messages.length) {
     $msgs.appendChild(welcomeEl());
+    firstRender = false;
     return;
   }
-  messages.forEach((m, i) => $msgs.appendChild(renderMsg(m, i)));
-  if (stick) scrollDown();
+  messages.forEach((m, i) => {
+    const el = renderMsg(m, i);
+    if (i === newIdx) el.classList.add('msg-new');
+    else if (firstRender && i < 14) {
+      el.classList.add('msg-in');
+      el.style.animationDelay = (i * 26) + 'ms';
+    }
+    $msgs.appendChild(el);
+  });
+  firstRender = false;
+  if (autoScroll) scrollDown();
 }
 function updateStreaming(el, reasoning, content) {
   let body = el.querySelector('.msg-body');
@@ -282,7 +294,6 @@ function updateStreaming(el, reasoning, content) {
     body.className = 'msg-body';
     el.insertBefore(body, el.firstChild);
   }
-  const stick = nearBottom();
   body.innerHTML = '';
 
   if (reasoning) body.appendChild(thinkEl(reasoning, true));
@@ -304,7 +315,18 @@ function updateStreaming(el, reasoning, content) {
     d.className = 'bubble typing';
     body.appendChild(d);
   }
-  if (stick) scrollDown();
+  if (autoScroll) scrollDown();
+}
+let streamRaf = 0, streamPending = null;
+function scheduleStream(el, reasoning, content) {
+  streamPending = { el, reasoning, content };
+  if (streamRaf) return;
+  streamRaf = requestAnimationFrame(() => {
+    streamRaf = 0;
+    const p = streamPending;
+    streamPending = null;
+    if (p) updateStreaming(p.el, p.reasoning, p.content);
+  });
 }
 
 /* ---------- 发送 & 流式接收 ---------- */
@@ -324,8 +346,10 @@ async function runAssistant() {
   messages.push(aMsg);
   const idx = messages.length - 1;
   const el = renderMsg(aMsg, idx);
+  el.classList.add('msg-new');
   $msgs.appendChild(el);
   updateStreaming(el, '', '');
+  autoScroll = true;
   scrollDown();
 
   setStreaming(true);
@@ -408,13 +432,15 @@ async function runAssistant() {
         }
         const dc = d.content ?? j.choices?.[0]?.text ?? '';
         if (dc) acc += dc;
-        if (rc || dc) updateStreaming(el, accR, acc);
+        if (rc || dc) scheduleStream(el, accR, acc);
       }
     }
   } catch (e) {
     if (e && e.name === 'AbortError') aborted = true;
     else errMsg = e.message || String(e);
   }
+
+  if (streamRaf) { cancelAnimationFrame(streamRaf); streamRaf = 0; streamPending = null; }
 
   const secs = tStart && tEnd ? Math.max(1, Math.round((tEnd - tStart) / 1000)) : 0;
   setStreaming(false);
@@ -430,7 +456,7 @@ async function runAssistant() {
     errEl.appendChild(d);
     el.replaceWith(errEl);
     saveMessages();
-    scrollDown();
+    if (autoScroll) scrollDown();
     return;
   }
 
@@ -447,7 +473,7 @@ async function runAssistant() {
   await finalize(aMsg, idx);
   if (aborted) toast('已停止生成');
   saveMessages();
-  scrollDown();
+  if (autoScroll) scrollDown();
 }
 
 async function finalize(msg, idx) {
@@ -481,7 +507,8 @@ async function send() {
   autoGrow();
   messages.push({ role: 'user', content: text, time: Date.now() });
   saveMessages();
-  renderMessages();
+  autoScroll = true;
+  renderMessages(messages.length - 1);
   scrollDown();
   await runAssistant();
 }
@@ -782,5 +809,4 @@ document.addEventListener('keydown', e => {
   });
 
   renderMessages();
-  scrollDown();
 })();
