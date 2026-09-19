@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v77：① AI 消息编辑键去重  ② 输入框文字一键转 .txt 附件
+   v78：AI 自动按 YAML 写「User 人设」（按需注入，不常驻）
    ============================================================ */
 
 /* ============================================================
@@ -132,9 +132,6 @@
 
     '#card-list .empty,#tool-list .empty,#lore-list .empty,#provider-list .empty,#file-list .empty{padding:22px 14px !important;border:1px dashed var(--line2);border-radius:16px;font-size:12.5px;line-height:1.8;opacity:.72}',
 
-    /* ============================================================
-       导航栏磨砂（v74）
-       ============================================================ */
     '#topbar{position:fixed !important;top:0;left:0;right:0;z-index:40;',
     '  background:color-mix(in srgb,var(--bg) 62%,transparent) !important;',
     '  -webkit-backdrop-filter:blur(30px) saturate(1.8) !important;',
@@ -1335,7 +1332,7 @@
 })();
 
 /* ============================================================
-   14. 角色卡详情：顶部分类标签（人设 / 世界书 / 正则）
+   14. 角色卡详情：顶部分类标签
    ============================================================ */
 (function cardTabs() {
   'use strict';
@@ -1986,7 +1983,7 @@
 })();
 
 /* ============================================================
-   19. 编辑 AI 消息（只替换内容，不重新生成、不动用户消息）
+   19. 编辑 AI 消息
    ============================================================ */
 (function editAssistantMsg() {
   'use strict';
@@ -2094,7 +2091,6 @@
   window.__editAssistantCommit = commit;
   window.__editAssistantActive = function () { return editingIdx; };
 
-  /* ---------- 给 AI 消息加「编辑」按钮（严格去重） ---------- */
   function addBtn(el, msg) {
     try {
       if (!el || !msg || msg.role !== 'assistant') return;
@@ -2325,14 +2321,226 @@
 })();
 
 /* ============================================================
-   21. 版本徽章
+   21. User 人设 · YAML 输出规范（按需注入）
+   —— 用户提到「人设 / persona / 我的设定」等词时才挂上
+   ============================================================ */
+(function userPersonaSpec() {
+  'use strict';
+  if (typeof buildSystemPrompt !== 'function') return;
+
+  var MARK = '【User 人设 · YAML 输出规范】';
+
+  var TRIGGERS = [
+    '人设', 'persona', '用户设定', '我的设定', '人物设定', '角色设定',
+    'user profile', 'user persona', 'user setting',
+    '写个我', '关于我', '我是谁',
+  ];
+
+  function lastUserText() {
+    try {
+      var arr = (typeof messages !== 'undefined' && messages) ? messages : [];
+      for (var i = arr.length - 1; i >= 0; i--) {
+        if (arr[i] && arr[i].role === 'user') {
+          var c = arr[i].content;
+          if (typeof c === 'string') return c;
+          if (Array.isArray(c)) {
+            return c.filter(function (p) { return p && p.type === 'text'; })
+              .map(function (p) { return p.text || ''; }).join('\n');
+          }
+          return '';
+        }
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function hit(text) {
+    if (!text) return false;
+    var t = String(text).toLowerCase();
+    for (var i = 0; i < TRIGGERS.length; i++) {
+      if (t.indexOf(String(TRIGGERS[i]).toLowerCase()) >= 0) return true;
+    }
+    return false;
+  }
+  window.__userPersonaHit = hit;
+
+  var SPEC = [
+    '',
+    '',
+    MARK,
+    '当用户让你「写一个我的人设 / User 人设 / 用户设定」时，按下面的规范输出。',
+    '',
+    '【一、输出格式】',
+    '· 只输出 YAML，不要任何解释、寒暄、场景描写、内心独白、小剧场、CoT 状态条。',
+    '· 字段名（键）必须用**英文小写 + 下划线**（snake_case），例如 basic_info / life_story / personality。',
+    '· 字段值（内容）用**简体中文**（专有名词可中英混写，比如英文名、公司名）。',
+    '· 缩进统一用 **2 个空格**，不要用 Tab。',
+    '· 不要把整段塞进一个字段，也不要在同一行塞多项。',
+    '',
+    '【二、字段结构 —— 不要照抄固定骨架】',
+    '先理解用户要的是什么世界、什么身份，然后**按这个世界观设计合适的字段**。举例：',
+    '· 现代都市 → basic_info / family / education / career / social / appearance / personality / lifestyle / goals / weaknesses / likes_dislikes / skills / interaction / nsfw',
+    '· 仙侠玄幻 → 加 cultivation(修为境界) / spiritual_root(灵根) / sect(宗门) / techniques(功法) / dao_heart(道心)',
+    '· ABO → 加 second_gender(第二性别) / pheromone(信息素) / heat_cycle(发情期) / bond_status(标记状态)',
+    '· 赛博朋克 → 加 cyberware(义体) / corp_affiliation(所属公司) / net_handle(网络身份) / augmentations',
+    '· 校园 → 加 grade / club / class_rank / homeroom_teacher',
+    '',
+    '下面是一份**参考骨架**（现代都市向，字段名可直接复用），你可以按世界观增删改：',
+    '',
+    '```yaml',
+    'basic_info:',
+    '  name: ',
+    '  nicknames: ',
+    '  age: ',
+    '  birthday: ',
+    '  gender: ',
+    '  height: ',
+    '  weight: ',
+    '  voice: ',
+    '  accent: ',
+    '  catchphrases: ',
+    '',
+    'life_story:',
+    '  childhood_0_12: ',
+    '  teen_13_18: ',
+    '  youth_19_35: ',
+    '  middle_age_35_now: ',
+    '  present: ',
+    '',
+    'family:',
+    '  father: ',
+    '  mother: ',
+    '  siblings: ',
+    '',
+    'living_environment:',
+    '  residence: ',
+    '  housing_type: ',
+    '  commute: ',
+    '  frequent_places: ',
+    '  financial_status: ',
+    '  education: ',
+    '',
+    'social_relations:',
+    '  significant_others: ',
+    '',
+    'social_status: ',
+    '',
+    'appearance:',
+    '  hair: ',
+    '  eyes: ',
+    '  skin: ',
+    '  face: ',
+    '  build: ',
+    '',
+    'clothing_style:',
+    '  business_formal: ',
+    '  business_casual: ',
+    '  casual: ',
+    '  loungewear: ',
+    '',
+    'belongings: ',
+    '',
+    'personality:',
+    '  core_traits: ',
+    '  romantic_traits: ',
+    '  values: ',
+    '  fears: ',
+    '  secrets: ',
+    '',
+    'speech:',
+    '  dialogue_examples: ',
+    '',
+    'lifestyle:',
+    '  daily_routine: ',
+    '  food_preferences: ',
+    '',
+    'work_behavior: ',
+    '',
+    'emotions:',
+    '  when_angry: ',
+    '  when_happy: ',
+    '',
+    'life_goals: ',
+    '',
+    'weaknesses: ',
+    '',
+    'likes_dislikes:',
+    '  likes: ',
+    '  dislikes: ',
+    '',
+    'skills:',
+    '  work_related: ',
+    '  life_related: ',
+    '  hobbies: ',
+    '',
+    'interaction:',
+    '  affinity_triggers: ',
+    '  taboo_topics: ',
+    '  memory_anchors: ',
+    '',
+    'nsfw:',
+    '  sexual_traits:',
+    '    experience: ',
+    '    orientation: ',
+    '    role: ',
+    '    habits: ',
+    '  kinks: ',
+    '  limits: ',
+    '```',
+    '',
+    '**这份骨架只是参考，不是要你照抄。** 用户给什么世界观，就设计什么字段。也可以合并同类字段，减少冗余。',
+    '',
+    '【三、必须填满 —— 不准留空】',
+    '· 每一个叶子字段都必须有**具体、非空**的值。',
+    '· 禁止：空字符串、`null`、`-`、裸的「未知 / unknown / N/A / 待定 / TBD / 暂无」。',
+    '· 推不出来就按人设、世界观、上下文编一个**合理且不矛盾**的值，细节越具体越好。',
+    '· **时间线例外**：如果某字段对应的阶段角色**还没到**（比如 24 岁的人写 middle_age_35_now），可以写「尚未发生（现年 24 岁，未达此阶段）」——但**必须带说明**，不能只写「未知」。这个例外适用于任何世界观的时间锁定字段。',
+    '',
+    '【四、多值用列表】',
+    '· 一个字段天然有多个并列项时（多个昵称、多个身份、多个爱好、多个技能……），用 YAML 列表：',
+    '  ```yaml',
+    '  nicknames:',
+    '    - 小明',
+    '    - 阿明',
+    '  ```',
+    '· 不要挤成一行用「、」「,」分隔。',
+    '· 单值的字段保持普通写法就行。',
+    '',
+    '【五、修改已有设定时】',
+    '· 如果用户已经贴了一份设定让你改，把它当基线。',
+    '· **只改用户明确提到的那几项**，其他字段**原样保留**，不要清空、不要缩写、不要用占位符替换。',
+    '· 原本空着的字段，这次要顺手补上（除非命中时间线例外）。',
+    '',
+    '【六、出稿前自检】',
+    '1. 有没有空字段？（有就补）',
+    '2. 字段名是不是全英文 snake_case？（有中文键就改）',
+    '3. 有没有夹解释、小剧场、内心独白？（有就删）',
+    '4. 多值字段是不是列表格式？',
+    '',
+    '【Action】只输出 YAML，不写任何多余的话。如果用户只是随口提到「人设」但并不是要你写设定，就不用理这份规范。',
+  ].join('\n');
+
+  var _orig = buildSystemPrompt;
+  var _new = function () {
+    var s = _orig();
+    if (typeof s !== 'string') return s;
+    if (!hit(lastUserText())) return s;
+    if (s.indexOf(MARK) >= 0) return s;
+    return s + SPEC;
+  };
+  try { buildSystemPrompt = _new; } catch (e) {}
+  try { window.buildSystemPrompt = _new; } catch (e) {}
+})();
+
+/* ============================================================
+   22. 版本徽章
    ============================================================ */
 (function bumpVer() {
   function set() {
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v77';
+      el.textContent = 'v78';
     } catch (e) {}
   }
   set();
