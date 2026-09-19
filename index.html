@@ -26,25 +26,13 @@ try {
 } catch (e) {}
 </script>
 <style>
-/* ============================================================
-   基础样式（原 style.v21.css 内联）
-   ============================================================ */
 :root{
-  --bg:#FBF8F3;
-  --bg2:#FFFDFA;
-  --bg3:#F4EFE7;
-  --bg4:#EBE4D9;
-  --line:#EDE7DD;
-  --line2:#DCD3C6;
-  --fg:#332E28;
-  --fg2:#8B8178;
-  --fg3:#B3A99C;
-  --acc:#B08968;
-  --acc-2:#C9A98A;
-  --acc-soft:rgba(176,137,104,.12);
+  --bg:#FBF8F3;--bg2:#FFFDFA;--bg3:#F4EFE7;--bg4:#EBE4D9;
+  --line:#EDE7DD;--line2:#DCD3C6;
+  --fg:#332E28;--fg2:#8B8178;--fg3:#B3A99C;
+  --acc:#B08968;--acc-2:#C9A98A;--acc-soft:rgba(176,137,104,.12);
   --grad:linear-gradient(135deg,#CBAC8C,#A9835F);
-  --ok:#7C9A72;
-  --danger:#C0705F;
+  --ok:#7C9A72;--danger:#C0705F;
   --sh-1:0 1px 2px rgba(58,52,46,.04);
   --sh-2:0 1px 2px rgba(58,52,46,.04),0 8px 24px -12px rgba(58,52,46,.12);
   --sh-3:0 2px 6px rgba(58,52,46,.05),0 20px 48px -18px rgba(58,52,46,.20);
@@ -496,9 +484,6 @@ html.dark .code-block{background:#191614;border-color:#2B2622}
 .conv-item .ci-edit .ic,.conv-item .ci-del .ic{width:15px;height:15px}
 @media(hover:none){.conv-item .ci-edit,.conv-item .ci-del{opacity:.55}}
 
-/* ============================================================
-   弹层
-   ============================================================ */
 .overlay{
   position:fixed;inset:0;z-index:50;
   background:rgba(58,52,46,.42);
@@ -821,85 +806,16 @@ body,#topbar,#composer,.composer-inner,.sheet,.think,.file-card,.file-row,.provi
   .overlay:not(.hidden) .sheet{animation:sheetPop .3s var(--ease) both}
 }
 
-/* ============================================================
-   主题配色包（原 style.themes.css 内联）
-   ============================================================ */
-html[data-theme="blue"]{
-  --bg:#F5F8FC; --bg2:#FFFFFF; --bg3:#ECF1F8; --bg4:#DFE7F2;
-  --line:#E2E9F3; --line2:#CBD6E6;
-  --fg:#1F2632; --fg2:#6A7889; --fg3:#98A4B4;
-  --acc:#3B6DB8; --acc-soft:rgba(59,109,184,.11);
-  --grad:linear-gradient(135deg,#6B9BD8,#3B6DB8);
-  --ok:#3F8F6E; --danger:#C25A5A;
-}
-html[data-theme="blue"].dark{
-  --bg:#111621; --bg2:#181E2A; --bg3:#202734; --bg4:#2A323F;
-  --line:#242B38; --line2:#374050;
-  --fg:#E8EDF4; --fg2:#96A2B2; --fg3:#6A7484;
-  --acc:#6B9BD8; --acc-soft:rgba(107,155,216,.16);
-  --grad:linear-gradient(135deg,#7FAEE4,#4E80C8);
-  --ok:#5FAE85; --danger:#D97A7A;
-}
-html[data-theme="green"]{
-  --bg:#F5FAF6; --bg2:#FFFFFF; --bg3:#EAF3EC; --bg4:#DCE9DF;
-  --line:#E0EEE4; --line2:#C8DBCC;
-  --fg:#1F2A22; --fg2:#68796C; --fg3:#96A79A;
-  --acc:#3F7D5C; --acc-soft:rgba(63,125,92,.11);
-  --grad:linear-gradient(135deg,#6FAE87,#3F7D5C);
-  --ok:#3F7D5C; --danger:#BE6455;
-}
-html[data-theme="green"].dark{
-  --bg:#111813; --bg2:#18211A; --bg3:#202A22; --bg4:#2A352C;
-  --line:#232E26; --line2:#37433A;
-  --fg:#E7F0E9; --fg2:#98AA9C; --fg3:#6C7E70;
-  --acc:#6FAE87; --acc-soft:rgba(111,174,135,.16);
-  --grad:linear-gradient(135deg,#7FBE95,#4E8E68);
-  --ok:#6FAE87; --danger:#D4836F;
-}
-html[data-theme="violet"]{
-  --bg:#F9F7FD; --bg2:#FFFFFF; --bg3:#F0EBF9; --bg4:#E4DCF3;
-  --line:#E9E2F5; --line2:#D5CBE9;
-  --fg:#252130; --fg2:#746A88; --fg3:#A49AB4;
-  --acc:#6D5AB8; --acc-soft:rgba(109,90,184,.11);
-  --grad:linear-gradient(135deg,#9B8AD8,#6D5AB8);
-  --ok:#4F8F72; --danger:#C05F7A;
-}
-html[data-theme="violet"].dark{
-  --bg:#15121D; --bg2:#1C1826; --bg3:#241F30; --bg4:#2F293D;
-  --line:#282236; --line2:#3C344D;
-  --fg:#ECE8F5; --fg2:#A29AB4; --fg3:#756C88;
-  --acc:#9B8AD8; --acc-soft:rgba(155,138,216,.16);
-  --grad:linear-gradient(135deg,#A99AE0,#7B68C8);
-  --ok:#6FAE87; --danger:#D4839A;
-}
-html[data-theme="rose"]{
-  --bg:#FDF7F9; --bg2:#FFFFFF; --bg3:#F8EDF1; --bg4:#F0DFE6;
-  --line:#F1E4EA; --line2:#E2CAD5;
-  --fg:#2C2227; --fg2:#856E78; --fg3:#B19EA7;
-  --acc:#B85C7A; --acc-soft:rgba(184,92,122,.11);
-  --grad:linear-gradient(135deg,#D88BA5,#B85C7A);
-  --ok:#5E8F72; --danger:#C05A5A;
-}
-html[data-theme="rose"].dark{
-  --bg:#1C1519; --bg2:#241B20; --bg3:#2D2229; --bg4:#382B33;
-  --line:#31242A; --line2:#46343D;
-  --fg:#F1E8EC; --fg2:#AA949F; --fg3:#7C6972;
-  --acc:#D88BA5; --acc-soft:rgba(216,139,165,.16);
-  --grad:linear-gradient(135deg,#E09BB3,#C46886);
-  --ok:#6FAE87; --danger:#D97A7A;
-}
-html[data-theme="coral"].dark{
-  --bg:#1C1917; --bg2:#231F1C; --bg3:#2B2724; --bg4:#35302B;
-  --line:#302B27; --line2:#423B35;
-  --fg:#F1ECE4; --fg2:#A79E93; --fg3:#7A7268;
-  --acc:#D4B08C; --acc-soft:rgba(212,176,140,.16);
-  --grad:linear-gradient(135deg,#CBAC8C,#A9835F);
-  --ok:#8FAE85; --danger:#D9836F;
-}
+html[data-theme="blue"]{--bg:#F5F8FC;--bg2:#FFFFFF;--bg3:#ECF1F8;--bg4:#DFE7F2;--line:#E2E9F3;--line2:#CBD6E6;--fg:#1F2632;--fg2:#6A7889;--fg3:#98A4B4;--acc:#3B6DB8;--acc-soft:rgba(59,109,184,.11);--grad:linear-gradient(135deg,#6B9BD8,#3B6DB8);--ok:#3F8F6E;--danger:#C25A5A;}
+html[data-theme="blue"].dark{--bg:#111621;--bg2:#181E2A;--bg3:#202734;--bg4:#2A323F;--line:#242B38;--line2:#374050;--fg:#E8EDF4;--fg2:#96A2B2;--fg3:#6A7484;--acc:#6B9BD8;--acc-soft:rgba(107,155,216,.16);--grad:linear-gradient(135deg,#7FAEE4,#4E80C8);--ok:#5FAE85;--danger:#D97A7A;}
+html[data-theme="green"]{--bg:#F5FAF6;--bg2:#FFFFFF;--bg3:#EAF3EC;--bg4:#DCE9DF;--line:#E0EEE4;--line2:#C8DBCC;--fg:#1F2A22;--fg2:#68796C;--fg3:#96A79A;--acc:#3F7D5C;--acc-soft:rgba(63,125,92,.11);--grad:linear-gradient(135deg,#6FAE87,#3F7D5C);--ok:#3F7D5C;--danger:#BE6455;}
+html[data-theme="green"].dark{--bg:#111813;--bg2:#18211A;--bg3:#202A22;--bg4:#2A352C;--line:#232E26;--line2:#37433A;--fg:#E7F0E9;--fg2:#98AA9C;--fg3:#6C7E70;--acc:#6FAE87;--acc-soft:rgba(111,174,135,.16);--grad:linear-gradient(135deg,#7FBE95,#4E8E68);--ok:#6FAE87;--danger:#D4836F;}
+html[data-theme="violet"]{--bg:#F9F7FD;--bg2:#FFFFFF;--bg3:#F0EBF9;--bg4:#E4DCF3;--line:#E9E2F5;--line2:#D5CBE9;--fg:#252130;--fg2:#746A88;--fg3:#A49AB4;--acc:#6D5AB8;--acc-soft:rgba(109,90,184,.11);--grad:linear-gradient(135deg,#9B8AD8,#6D5AB8);--ok:#4F8F72;--danger:#C05F7A;}
+html[data-theme="violet"].dark{--bg:#15121D;--bg2:#1C1826;--bg3:#241F30;--bg4:#2F293D;--line:#282236;--line2:#3C344D;--fg:#ECE8F5;--fg2:#A29AB4;--fg3:#756C88;--acc:#9B8AD8;--acc-soft:rgba(155,138,216,.16);--grad:linear-gradient(135deg,#A99AE0,#7B68C8);--ok:#6FAE87;--danger:#D4839A;}
+html[data-theme="rose"]{--bg:#FDF7F9;--bg2:#FFFFFF;--bg3:#F8EDF1;--bg4:#F0DFE6;--line:#F1E4EA;--line2:#E2CAD5;--fg:#2C2227;--fg2:#856E78;--fg3:#B19EA7;--acc:#B85C7A;--acc-soft:rgba(184,92,122,.11);--grad:linear-gradient(135deg,#D88BA5,#B85C7A);--ok:#5E8F72;--danger:#C05A5A;}
+html[data-theme="rose"].dark{--bg:#1C1519;--bg2:#241B20;--bg3:#2D2229;--bg4:#382B33;--line:#31242A;--line2:#46343D;--fg:#F1E8EC;--fg2:#AA949F;--fg3:#7C6972;--acc:#D88BA5;--acc-soft:rgba(216,139,165,.16);--grad:linear-gradient(135deg,#E09BB3,#C46886);--ok:#6FAE87;--danger:#D97A7A;}
+html[data-theme="coral"].dark{--bg:#1C1917;--bg2:#231F1C;--bg3:#2B2724;--bg4:#35302B;--line:#302B27;--line2:#423B35;--fg:#F1ECE4;--fg2:#A79E93;--fg3:#7A7268;--acc:#D4B08C;--acc-soft:rgba(212,176,140,.16);--grad:linear-gradient(135deg,#CBAC8C,#A9835F);--ok:#8FAE85;--danger:#D9836F;}
 
-/* ============================================================
-   页面补充样式（原 index.html 内联）
-   ============================================================ */
 .perm-row{display:flex;align-items:center;gap:14px;padding:13px 0}
 .perm-row + .perm-row{border-top:1px solid var(--line)}
 .perm-meta{flex:1 1 auto;min-width:0}
@@ -914,11 +830,7 @@ html[data-theme="coral"].dark{
 
 .code-block pre code .cl{display:block;min-height:1.7em}
 .code-block pre code .cl::before{content:attr(data-n);display:inline-block;width:2.2em;margin-right:.9em;text-align:right;color:rgba(255,255,255,.2);user-select:none;-webkit-user-select:none}
-.tk-s{color:#9BD08C}
-.tk-c{color:#6F7A70;font-style:italic}
-.tk-n{color:#9AC6E8}
-.tk-k{color:#E2A87C}
-.tk-p{color:#A79C90}
+.tk-s{color:#9BD08C}.tk-c{color:#6F7A70;font-style:italic}.tk-n{color:#9AC6E8}.tk-k{color:#E2A87C}.tk-p{color:#A79C90}
 
 .find-bar{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);z-index:30}
 .find-bar input{flex:1 1 auto;padding:9px 13px;border-radius:12px;font-size:14px;background:var(--bg3);border-color:transparent}
@@ -1008,9 +920,6 @@ html[data-theme="coral"].dark{
 body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;inset:14px;border:2px dashed var(--acc);border-radius:26px;display:grid;place-items:center;font-size:15px;font-weight:600;color:var(--acc);background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:300;pointer-events:none}
 @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}}
 
-/* ============================================================
-   角色卡详情：顶部分类标签（patch.js 注入）
-   ============================================================ */
 #cv-body .cv-tabs{display:flex;gap:4px;padding:4px;background:var(--bg3);border-radius:15px;margin-bottom:18px}
 #cv-body .cv-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 6px;border-radius:12px;font-size:13.5px;font-weight:500;color:var(--fg2);background:none;border:none;cursor:pointer;transition:background-color .2s ease,color .2s ease,box-shadow .2s ease,transform .12s ease}
 #cv-body .cv-tab:hover{color:var(--fg)}
@@ -1068,7 +977,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     <button id="btn-history" class="icon-btn" title="历史对话"><svg class="ic"><use href="#i-menu"/></svg></button>
     <span class="avatar" id="brand-avatar">🎨</span>
     <span class="title" id="brand-name">机语工坊</span>
-    <span class="ver">v77</span>
+    <span class="ver">v78</span>
   </div>
   <div class="actions">
     <button id="btn-find" class="icon-btn" title="搜索对话（Ctrl+F）"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -1077,7 +986,6 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 </header>
 
 <main id="pages">
-
   <section id="page-chat" class="page active">
     <div id="find-bar" class="find-bar hidden">
       <input id="find-input" placeholder="输入关键词，下面列出匹配消息…" />
@@ -1124,11 +1032,9 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     <div class="page-head"><h2>角色卡</h2></div>
     <div class="page-body">
       <div id="card-list"></div>
-
       <button type="button" id="btn-import-card-v2" class="ghost">
         <svg class="ic"><use href="#i-upload"/></svg>导入角色卡（PNG / JSON）
       </button>
-
       <details class="paste-box">
         <summary>文件选择器打不开？点这里粘贴内容导入</summary>
         <textarea id="paste-card" placeholder="把角色卡 JSON 内容粘贴到这里（从别的 App 复制过来即可）…"></textarea>
@@ -1137,11 +1043,9 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
           导入这段内容
         </button>
       </details>
-
       <p class="hint">导入后只存在这张卡里，<b>不会动你的全局世界书</b>。卡里的世界书、正则都能在这里查看和开关。</p>
       <p id="card-diag">诊断加载中…</p>
     </div>
-
     <input type="file" id="pick-card" multiple
       onchange="try{if(window.__cardFixImport)window.__cardFixImport(this.files)}catch(e){alert('导入出错：'+(e&&e.message||e))}"
       style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap;border:0" />
@@ -1189,7 +1093,6 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
       </div>
     </div>
   </section>
-
 </main>
 
 <nav id="tabbar">
@@ -1218,43 +1121,23 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     <div class="sheet-head"><h2>AI 人设</h2><button class="close" data-close="persona"><svg class="ic"><use href="#i-x"/></svg></button></div>
     <div class="sheet-body">
       <p id="pa-scope" class="hint" style="margin-top:-6px">这套人设只属于当前对话</p>
-      <section class="field">
-        <label>头像（一个 emoji）</label>
-        <input id="pa-avatar" maxlength="4" placeholder="🎨" />
-      </section>
-      <section class="field">
-        <label>名字</label>
-        <input id="pa-name" placeholder="机语工坊" />
-      </section>
-      <section class="field">
-        <label>人设（这个对话的性格与规则）</label>
-        <textarea id="pa-bio" rows="6" placeholder="例：你是资深前端工程师，说话简洁直接，代码永远给完整可运行的单文件 HTML，不要用外部依赖……"></textarea>
-      </section>
-      <section class="field">
-        <label>开场白（这个对话空着时的欢迎语）</label>
-        <textarea id="pa-greeting" rows="3" placeholder="留空则用默认文案"></textarea>
-      </section>
-
+      <section class="field"><label>头像（一个 emoji）</label><input id="pa-avatar" maxlength="4" placeholder="🎨" /></section>
+      <section class="field"><label>名字</label><input id="pa-name" placeholder="机语工坊" /></section>
+      <section class="field"><label>人设（这个对话的性格与规则）</label><textarea id="pa-bio" rows="6" placeholder="例：你是资深前端工程师，说话简洁直接，代码永远给完整可运行的单文件 HTML，不要用外部依赖……"></textarea></section>
+      <section class="field"><label>开场白（这个对话空着时的欢迎语）</label><textarea id="pa-greeting" rows="3" placeholder="留空则用默认文案"></textarea></section>
       <section class="field">
         <label>能力</label>
         <div>
           <div class="perm-row">
-            <div class="perm-meta">
-              <div class="perm-name">获取当前日期时间</div>
-              <div class="perm-sub">开启后，AI 每次都会知道今天是几号、星期几、几点</div>
-            </div>
+            <div class="perm-meta"><div class="perm-name">获取当前日期时间</div><div class="perm-sub">开启后，AI 每次都会知道今天是几号、星期几、几点</div></div>
             <button id="pa-time" class="ti-toggle" title="开启 / 关闭"></button>
           </div>
           <div class="perm-row">
-            <div class="perm-meta">
-              <div class="perm-name">搜索历史对话</div>
-              <div class="perm-sub">开启后，AI 可以主动检索你过去聊过的内容（需要模型支持工具调用）</div>
-            </div>
+            <div class="perm-meta"><div class="perm-name">搜索历史对话</div><div class="perm-sub">开启后，AI 可以主动检索你过去聊过的内容（需要模型支持工具调用）</div></div>
             <button id="pa-history" class="ti-toggle" title="开启 / 关闭"></button>
           </div>
         </div>
       </section>
-
       <div class="row between">
         <button id="pa-reset" class="ghost danger">恢复默认</button>
         <button id="pa-save">保存</button>
@@ -1274,18 +1157,9 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
   <div class="sheet">
     <div class="sheet-head"><h2 id="le-title">添加条目</h2><button class="close" data-close="lore-edit"><svg class="ic"><use href="#i-x"/></svg></button></div>
     <div class="sheet-body">
-      <section class="field">
-        <label>名称</label>
-        <input id="le-name" placeholder="例如：主角设定" />
-      </section>
-      <section class="field">
-        <label>关键词（逗号分隔，留空 = 常驻）</label>
-        <input id="le-keywords" placeholder="例如：小明,主角" />
-      </section>
-      <section class="field">
-        <label>内容</label>
-        <textarea id="le-content" rows="6" placeholder="写进 AI 设定的内容……"></textarea>
-      </section>
+      <section class="field"><label>名称</label><input id="le-name" placeholder="例如：主角设定" /></section>
+      <section class="field"><label>关键词（逗号分隔，留空 = 常驻）</label><input id="le-keywords" placeholder="例如：小明,主角" /></section>
+      <section class="field"><label>内容</label><textarea id="le-content" rows="6" placeholder="写进 AI 设定的内容……"></textarea></section>
       <div class="row between">
         <button id="le-delete" class="ghost danger" hidden>删除</button>
         <button id="le-save">保存</button>
@@ -1312,20 +1186,11 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
   <div class="sheet">
     <div class="sheet-head"><h2 id="pe-title">添加供应商</h2><button class="close" data-close="provider-edit"><svg class="ic"><use href="#i-x"/></svg></button></div>
     <div class="sheet-body">
-      <section class="field">
-        <label>快速选择</label>
-        <div id="presets" class="presets"></div>
-      </section>
+      <section class="field"><label>快速选择</label><div id="presets" class="presets"></div></section>
       <section class="field"><label>名称</label><input id="pe-name" placeholder="例如：DeepSeek" /></section>
       <section class="field"><label>Base URL</label><input id="pe-base" placeholder="https://api.deepseek.com/v1" /></section>
       <section class="field"><label>API Key</label><input id="pe-key" type="password" placeholder="sk-…" /></section>
-      <section class="field">
-        <label>模型</label>
-        <div class="row">
-          <select id="pe-model"></select>
-          <button id="btn-fetch-models" class="ghost">拉取模型</button>
-        </div>
-      </section>
+      <section class="field"><label>模型</label><div class="row"><select id="pe-model"></select><button id="btn-fetch-models" class="ghost">拉取模型</button></div></section>
       <section class="field">
         <label>推理模式</label>
         <select id="pe-reasoning">
@@ -1350,11 +1215,7 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
     <div class="sheet-body">
       <section class="field"><label>名称</label><input id="te-name" placeholder="例如：天气工具" /></section>
       <section class="field"><label>服务器地址（HTTP）</label><input id="te-url" placeholder="https://example.com/mcp" /></section>
-      <section class="field">
-        <label>请求头</label>
-        <div id="te-headers-list" class="hdr-list"></div>
-        <button id="btn-add-header" class="ghost"><svg class="ic"><use href="#i-plus"/></svg>添加请求头</button>
-      </section>
+      <section class="field"><label>请求头</label><div id="te-headers-list" class="hdr-list"></div><button id="btn-add-header" class="ghost"><svg class="ic"><use href="#i-plus"/></svg>添加请求头</button></section>
       <section class="field"><label>工具列表</label><div id="te-tools" class="te-tools"></div></section>
       <div class="row between">
         <button id="te-delete" class="ghost danger" hidden>删除</button>
@@ -1369,25 +1230,17 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.v29.js?v=77"></script>
-<script src="extra.v4.js?v=77"></script>
-<script src="patch.js?v=77"></script>
+<script src="app.v29.js?v=78"></script>
+<script src="extra.v4.js?v=78"></script>
+<script src="patch.js?v=78"></script>
 <script>
-/* ============================================================
-   v77
-   patch.js 里注入了：AI 消息编辑、转 .txt、导航栏磨砂、网页搜索等；
-   这里只兜底：徽章 + 清掉任何残留的行内高度
-   ============================================================ */
 (function () {
   'use strict';
-
   function clean() {
     var v = document.querySelector('.ver');
-    if (v && v.textContent !== 'v77') v.textContent = 'v77';
-
+    if (v && v.textContent !== 'v78') v.textContent = 'v78';
     var ov = document.getElementById('card-view');
     if (!ov || ov.classList.contains('hidden')) return;
-
     var s = ov.querySelector('.sheet');
     if (s && s.style && s.style.length) {
       ['height', 'max-height', 'min-height', 'flex', 'align-self', 'padding-bottom', 'margin-bottom']
@@ -1399,9 +1252,8 @@ body.dragging::after{content:"松开即可添加图片 / 文件";position:fixed;
         .forEach(function (k) { b.style.removeProperty(k); });
     }
   }
-
   clean();
-  setInterval(clean, 120);
+  setInterval(clean, 60);
 })();
 </script>
 </body>
