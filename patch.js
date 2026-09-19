@@ -1,6 +1,6 @@
 /* ============================================================
    patch.js —— 所有补丁合并版
-   v76：修掉 AI 消息重复的「编辑」按钮
+   v77：① AI 消息编辑键去重  ② 输入框文字一键转 .txt 附件
    ============================================================ */
 
 /* ============================================================
@@ -13,11 +13,9 @@
   var s = document.createElement('style');
   s.id = 'patch-css';
   s.textContent = [
-    /* ---- 公式 ---- */
     '.katex{font-size:1.04em}',
     '.katex-display{margin:12px 0;overflow-x:auto;overflow-y:hidden;padding:3px 0}',
 
-    /* ---- Mermaid ---- */
     '.mermaid-wrap{margin:12px 0;padding:14px;background:var(--bg2);border:1px solid var(--line2);border-radius:16px;overflow-x:auto}',
     '.mermaid-wrap svg{max-width:100%;height:auto;display:block;margin:0 auto}',
     '.mermaid-loading,.mermaid-err{font-size:12.5px;color:var(--fg3);text-align:center;padding:10px}',
@@ -26,7 +24,6 @@
     '.mermaid-bar button{font-size:11.5px;padding:4px 11px;border-radius:9px;border:1px solid var(--line2);background:var(--bg2);color:var(--fg2);cursor:pointer}',
     '.mermaid-bar button:hover{border-color:var(--acc);color:var(--acc)}',
 
-    /* ---- 引用 ---- */
     '.quote-box{border-left:3px solid var(--acc);padding:7px 11px;margin-bottom:9px;background:var(--bg3);border-radius:9px;font-size:12.5px;color:var(--fg2);max-height:96px;overflow:hidden}',
     '.quote-box .qb-who{font-size:11px;color:var(--acc);margin-bottom:3px;font-weight:600}',
     '.quote-box .qb-txt{white-space:pre-wrap;word-break:break-word;line-height:1.6}',
@@ -36,7 +33,6 @@
     '#quote-bar .qb-pre{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.75}',
     '#quote-bar .qb-x{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:none;background:var(--fg);color:var(--bg);cursor:pointer;font-size:13px;line-height:1;display:grid;place-items:center;opacity:.7}',
 
-    /* ---- 上下文环 ---- */
     '#ctx-bar{display:none !important}',
     '#btn-attach{position:relative !important;overflow:visible !important}',
     '#ctx-ring{position:absolute;inset:-3px;border-radius:15px;padding:2.5px;pointer-events:none;opacity:0;transition:opacity .25s ease;background:transparent;',
@@ -44,11 +40,9 @@
     '  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}',
     '#ctx-ring.on{opacity:1}',
 
-    /* ---- 气泡 ---- */
     '.msg > .bubble{max-width:min(var(--bubble-max,680px),92%) !important;border-radius:var(--bubble-radius,20px) !important}',
     '.msg-body{max-width:min(var(--bubble-max,680px),92%) !important}',
 
-    /* ---- 设置页滑杆 ---- */
     '#bubble-field .bs-row{display:flex;align-items:center;gap:12px;padding:9px 0}',
     '#bubble-field .bs-lb{flex:0 0 44px;font-size:12.5px;color:var(--fg2)}',
     '#bubble-field input[type=range]{flex:1 1 auto;accent-color:var(--acc);height:22px}',
@@ -57,7 +51,6 @@
     '#font-field .font-name b{color:var(--acc)}',
     '#font-field .font-btns{display:flex;gap:8px;flex-wrap:wrap}',
 
-    /* ---- 搜索配置块 ---- */
     '#websearch-field .ws-inputs{display:flex;flex-direction:column;gap:9px}',
     '#websearch-field .ws-inputs input{font-size:13.5px;padding:12px 14px}',
     '#websearch-field .ws-row{display:flex;gap:8px;flex-wrap:wrap}',
@@ -73,7 +66,6 @@
     '#websearch-field .ws-toggle-row .ws-tg-name{font-size:13.5px;font-weight:600}',
     '#websearch-field .ws-toggle-row .ws-tg-sub{font-size:11.5px;color:var(--fg3);margin-top:3px;line-height:1.6}',
 
-    /* ---- 搜索 ---- */
     '.find-bar{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);z-index:30}',
     '.find-bar input{flex:1 1 auto;padding:9px 13px;border-radius:12px;font-size:14px;background:var(--bg3);border-color:transparent}',
     '.find-count{font-size:12px;color:var(--fg3);flex:0 0 auto;min-width:3.2em;text-align:right}',
@@ -88,7 +80,6 @@
     '.find-list .find-row .fr-txt{flex:1 1 auto;min-width:0;color:var(--fg2);word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}',
     '.find-empty{padding:16px;text-align:center;color:var(--fg3);font-size:12.5px}',
 
-    /* ---- 分支 ---- */
     '.msg-branch{display:flex;align-items:center;gap:6px;margin:2px 0 8px 2px;font-size:11.5px;color:var(--fg3)}',
     '.msg-branch button{width:23px;height:23px;border-radius:8px;border:1px solid var(--line2);background:var(--bg2);color:var(--fg2);display:grid;place-items:center;cursor:pointer;font-size:14px;line-height:1;padding:0}',
     '.msg-branch button:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}',
@@ -96,12 +87,10 @@
     '.msg-branch .br-n{font-variant-numeric:tabular-nums;padding:0 2px}',
     '.msg-branch .br-tag{font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--bg4);color:var(--fg3);margin-left:2px}',
 
-    /* ---- 输入区对齐 ---- */
     '.composer-inner{display:flex;align-items:center !important}',
     '.composer-inner > button,.composer-inner > .tool-btn{align-self:center !important;flex:0 0 auto;margin-top:0 !important;margin-bottom:0 !important}',
     '.composer-inner > textarea{align-self:center !important}',
 
-    /* ---- 角色卡详情：顶部分类标签 ---- */
     '#cv-body .cv-tabs{display:flex;gap:4px;padding:4px;background:var(--bg3);border-radius:15px;margin-bottom:18px}',
     '#cv-body .cv-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 6px;border-radius:12px;font-size:13.5px;font-weight:500;color:var(--fg2);background:none;border:none;cursor:pointer;transition:background-color .2s ease,color .2s ease,box-shadow .2s ease,transform .12s ease}',
     '#cv-body .cv-tab:hover{color:var(--fg)}',
@@ -112,7 +101,6 @@
     '#cv-body .cv-tab.is-empty{opacity:.38;cursor:default}',
     '#cv-body .cv-tab.is-empty:hover{color:var(--fg2)}',
 
-    /* ---- 列表视觉 ---- */
     '#card-list .card-item{position:relative;border-radius:20px !important;padding:16px 40px 16px 18px !important;background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 7%,var(--bg2)) 0%,var(--bg2) 58%) !important;border:1px solid color-mix(in srgb,var(--acc) 20%,var(--line2)) !important;transition:transform .22s cubic-bezier(.16,1,.3,1),box-shadow .24s ease,border-color .2s ease !important}',
     '#card-list .card-item:hover{transform:translateY(-2px) !important;border-color:color-mix(in srgb,var(--acc) 48%,var(--line2)) !important;box-shadow:0 14px 30px -16px color-mix(in srgb,var(--acc) 55%,transparent) !important}',
     '#card-list .card-item::after{content:"›";position:absolute;right:15px;top:50%;transform:translateY(-50%) translateX(-4px);font-size:22px;line-height:1;color:var(--acc);opacity:0;transition:opacity .2s ease,transform .22s cubic-bezier(.16,1,.3,1);pointer-events:none}',
@@ -2113,13 +2101,11 @@
       var acts = el.querySelector('.msg-actions');
       if (!acts) return;
 
-      /* 1) 移除原版给「用户消息」用的编辑键 —— 它对 AI 消息无效，是个死按钮 */
       var olds = acts.querySelectorAll('[data-act="edit"]');
       for (var k = 0; k < olds.length; k++) {
         try { olds[k].remove(); } catch (e0) {}
       }
 
-      /* 2) 去重：只保留第一个 editai */
       var mine = acts.querySelectorAll('[data-act="editai"]');
       if (mine.length) {
         for (var j = 1; j < mine.length; j++) {
@@ -2237,7 +2223,6 @@
     try { mo.observe(box, { childList: true, subtree: true }); } catch (e) {}
   })();
 
-  /* 兜底：每秒扫一次，任何重复的编辑键都清掉 */
   setInterval(function () {
     try {
       var nodes = document.querySelectorAll('#messages .msg.assistant .msg-actions');
@@ -2256,14 +2241,98 @@
 })();
 
 /* ============================================================
-   20. 版本徽章
+   20. 输入框文字 → 一键转 .txt 附件
+   ============================================================ */
+(function txtAttach() {
+  'use strict';
+
+  function say(msg, ms) {
+    try { if (typeof toast === 'function') toast(msg, ms || 2600); } catch (e) {}
+  }
+
+  function install() {
+    try {
+      var menu = document.getElementById('attach-menu');
+      if (!menu) return false;
+      if (menu.querySelector('[data-kind="txt"]')) return true;
+
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.kind = 'txt';
+      b.title = '把输入框里的文字变成 .txt 附件';
+      b.innerHTML = '<svg class="ic"><use href="#i-edit"/></svg>转成 .txt';
+      menu.appendChild(b);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function convert() {
+    try {
+      var input = document.getElementById('input');
+      if (!input) return;
+      var v = String(input.value || '');
+      if (!v.trim()) { say('输入框里还没写东西'); return; }
+
+      if (typeof pendingAtts === 'undefined' || !pendingAtts) { say('附件区没准备好，刷新一下试试'); return; }
+      if (pendingAtts.length >= 6) { say('最多同时带 6 个附件'); return; }
+
+      var first = v.trim().split('\n')[0].replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim();
+      var base = first.slice(0, 24) || '文本';
+      var name = base + '.txt';
+
+      var used = {};
+      for (var i = 0; i < pendingAtts.length; i++) {
+        if (pendingAtts[i] && pendingAtts[i].name) used[pendingAtts[i].name] = 1;
+      }
+      var n = 2;
+      while (used[name]) { name = base + ' ' + n + '.txt'; n++; }
+
+      var size = 0;
+      try { size = new Blob([v]).size; } catch (e) { size = v.length; }
+
+      var id = (typeof uid === 'function')
+        ? uid()
+        : (String(Date.now()) + Math.random().toString(36).slice(2, 6));
+
+      pendingAtts.push({ id: id, kind: 'text', name: name, size: size, ext: 'txt', text: v });
+
+      input.value = '';
+      try { if (typeof autoGrow === 'function') autoGrow(); } catch (e2) {}
+      try { if (typeof renderAttachBar === 'function') renderAttachBar(); } catch (e3) {}
+
+      say('已转成 ' + name + '，接着写吧', 3200);
+    } catch (e) {
+      say('转换失败：' + ((e && e.message) || e), 3600);
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var btn = t.closest('#attach-menu button[data-kind="txt"]');
+    if (!btn) return;
+    e.stopPropagation();
+    e.preventDefault();
+    var menu = document.getElementById('attach-menu');
+    if (menu) menu.classList.add('hidden');
+    convert();
+  }, true);
+
+  install();
+  setTimeout(install, 300);
+  setTimeout(install, 1200);
+  setTimeout(install, 2600);
+})();
+
+/* ============================================================
+   21. 版本徽章
    ============================================================ */
 (function bumpVer() {
   function set() {
     try {
       var el = document.querySelector('.ver');
       if (!el) return;
-      el.textContent = 'v76';
+      el.textContent = 'v77';
     } catch (e) {}
   }
   set();
